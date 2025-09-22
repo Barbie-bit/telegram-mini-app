@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мини-приложение рыбалки</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            color: #333;
+            padding: 20px;
+        }
+        .button {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        select, input {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Добро пожаловать в мини-приложение рыбалки!</h1>
+    
+    <p>Выберите водоём:</p>
+    <select id="lake">
+        <option value="Лосиное">Лосиное</option>
+        <option value="Комариное">Комариное</option>
+        <option value="Вьюнок">Вьюнок</option>
+        <option value="Белая">Белая</option>
+        <option value="Острог">Острог</option>
+        <option value="Куори">Куори</option>
+        <option value="Медвежье">Медвежье</option>
+        <option value="Волхов">Волхов</option>
+        <option value="Донец">Донец</option>
+        <option value="Сура">Сура</option>
+        <option value="Ладожское">Ладожское</option>
+        <option value="Архипелаг">Архипелаг</option>
+        <option value="Янтарное">Янтарное</option>
+        <option value="Ахтуба">Ахтуба</option>
+        <option value="Медное">Медное</option>
+        <option value="Тунгуска">Тунгуска</option>
+        <option value="Яма">Яма</option>
+        <option value="Норвежское море">Норвежское море</option>
+    </select>
+    
+    <p>Выберите рыбу:</p>
+    <select id="fish">
+        <option value="Окунь">Окунь</option>
+        <option value="Щука">Щука</option>
+        <option value="Судак">Судак</option>
+        <option value="Лещ">Лещ</option>
+        <option value="Карп">Карп</option>
+        <option value="Карась">Карась</option>
+        <option value="Голавль">Голавль</option>
+        <option value="Линь">Линь</option>
+        <option value="Сом">Сом</option>
+        <option value="Плотва">Плотва</option>
+    </select>
+    
+    <p>Введите координаты:</p>
+    <input type="text" id="coordinates" placeholder="XXX:XXX">
+    
+    <p>Укажите глубину:</p>
+    <input type="text" id="depth" placeholder="Глубина в метрах">
+    
+    <p>Укажите скорость:</p>
+    <input type="text" id="speed" placeholder="Скорость ловли">
+    
+    <p>Укажите клипсу (например, 10):</p>
+    <input type="text" id="clips" placeholder="Клипса">
+    
+    <button class="button" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
+    
+    <script>
+        // Инициализация WebApp
+        Telegram.WebApp.init();
+
+        function sendDataToTelegram() {
+            const lake = document.getElementById('lake').value;
+            const fish = document.getElementById('fish').value;
+            const coordinates = document.getElementById('coordinates').value;
+            const depth = document.getElementById('depth').value;
+            const speed = document.getElementById('speed').value;
+            const clips = document.getElementById('clips').value;
+
+            // Формируем строку данных
+            const data = `Водоём: ${lake}\nРыба: ${fish}\nКоординаты: ${coordinates}\nГлубина: ${depth}\nСкорость: ${speed}\nКлипса: ${clips}`;
+
+            // Отправка данных в Telegram
+            Telegram.WebApp.sendData(data);
+        }
+    </script>
+</body>
+</html>
+
+    main()
