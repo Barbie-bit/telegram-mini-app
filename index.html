@@ -29,6 +29,9 @@
             width: 100%;
             max-width: 300px;
         }
+        .file-input {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -85,6 +88,10 @@
 
     <label for="comment">Комментарий:</label>
     <input type="text" id="comment">
+
+    <!-- Поле для загрузки фотографий -->
+    <label for="photos">Загрузите до 10 фотографий:</label>
+    <input type="file" id="photos" class="file-input" multiple accept="image/*">
 
     <button class="button" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
 
@@ -298,6 +305,12 @@
             const speed = document.getElementById('speed').value;
             const square = document.getElementById('square').value;
             const comment = document.getElementById('comment').value;
+            const photos = document.getElementById('photos').files;
+
+            let photosArray = [];
+            for (let i = 0; i < photos.length; i++) {
+                photosArray.push(photos[i]);
+            }
 
             const data = `# ${category.toLowerCase()}_PP4Farm\n` +
                          `# ${lake}_PP4Farm 💥\n` +
@@ -313,6 +326,13 @@
             if (groupLink) {
                 // Отправка данных в Telegram через WebApp
                 Telegram.WebApp.sendData(data + `\n\nГруппа для публикации: ${groupLink}`);
+
+                // Отправка фотографий, если они есть
+                if (photosArray.length > 0) {
+                    for (let i = 0; i < photosArray.length; i++) {
+                        Telegram.WebApp.sendFile(photosArray[i]); // Отправляем фотографии
+                    }
+                }
             } else {
                 alert("Выберите правильный водоём!");
             }
