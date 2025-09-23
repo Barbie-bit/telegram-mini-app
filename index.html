@@ -321,7 +321,7 @@
             const fishList = fishByWater[lake] || [];
             const fishSelect = document.getElementById('fish');
             fishSelect.innerHTML = '';
-            
+
             fishList.forEach(fish => {
                 const option = document.createElement('option');
                 option.value = fish;
@@ -335,7 +335,7 @@
         function updateButtonText() {
             const lake = document.getElementById('lake').value;
             const button = document.getElementById('publishButton');
-            
+
             if (lake === "Лосиное") {
                 button.textContent = "Опубликовать на Лосиное";
             } else {
@@ -343,7 +343,6 @@
             }
         }
 
-        // Открытие галереи для добавления фото
         function openGallery() {
             if (selectedPhotos.length >= 10) {
                 alert("Вы не можете выбрать больше 10 фото.");
@@ -354,8 +353,7 @@
                 type: 'photo',
                 onSuccess: function(photo) {
                     if (selectedPhotos.length < 10) {
-                        selectedPhotos.push(photo);
-                        updatePhotoCount();
+                        uploadImage(photo);  // Загружаем выбранное изображение на ImgBB
                     }
                 },
                 onError: function(error) {
@@ -365,7 +363,33 @@
             });
         }
 
-        // Обновляем информацию о количестве выбранных фото
+        function uploadImage(file) {
+            const apiKey = '00c6b30539d8a50da392574247b30e1a';  // Ваш API-ключ ImgBB
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch(`https://api.imgbb.com/1/upload?expiration=10800&key=${apiKey}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const imageUrl = data.data.url;  // Ссылка на изображение
+                    const deleteUrl = data.data.delete_url;  // Ссылка для удаления изображения
+
+                    // Добавляем изображение в массив
+                    selectedPhotos.push({ imageUrl, deleteUrl });
+                    updatePhotoCount();
+                } else {
+                    console.error('Ошибка загрузки изображения:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка сети:', error);
+            });
+        }
+
         function updatePhotoCount() {
             const photoCount = selectedPhotos.length;
             document.getElementById("photoCountInfo").textContent = `Выбрано ${photoCount} фото. Минимум 3, максимум 10.`;
@@ -376,6 +400,11 @@
         }
 
         function sendDataToTelegram() {
+            if (selectedPhotos.length < 3) {
+                alert("Необходимо выбрать минимум 3 фото.");
+                return;
+            }
+
             const category = document.getElementById('category').value;
             const lake = document.getElementById('lake').value;
             const fish = document.getElementById('fish').value;
@@ -385,11 +414,6 @@
             const speed = document.getElementById('speed').value;
             const square = document.getElementById('square').value;
             const comment = document.getElementById('comment').value;
-
-            if (selectedPhotos.length < 3) {
-                alert("Необходимо выбрать минимум 3 фото.");
-                return;
-            }
 
             const data = `# ${category.toLowerCase()}_PP4Farm\n` +
                          `# ${lake}_PP4Farm 💥\n` +
@@ -406,11 +430,29 @@
                 Telegram.WebApp.sendData(data + `\n\nГруппа для публикации: ${groupLink}`);
 
                 selectedPhotos.forEach(function(photo) {
-                    Telegram.WebApp.sendData(photo);
+                    Telegram.WebApp.sendData(photo.imageUrl);  // Отправляем ссылку на изображение
+                });
+
+                // Удаляем изображения после отправки
+                selectedPhotos.forEach(function(photo) {
+                    deleteImage(photo.deleteUrl);  // Удаляем изображения с ImgBB
                 });
             } else {
                 alert("Выберите правильный водоём!");
             }
+        }
+
+        function deleteImage(deleteUrl) {
+            fetch(deleteUrl, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Изображение удалено с ImgBB');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при удалении изображения:', error);
+                });
         }
 
         Telegram.WebApp.init();
