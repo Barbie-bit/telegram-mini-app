@@ -69,6 +69,10 @@
             font-size: 14px;
             color: #666;
         }
+
+        #photoInput {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -127,7 +131,8 @@
 
         <button class="button" id="publishButton" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
 
-        <button class="photo-button" id="addPhotoButton" onclick="openGallery()">Добавить фото (минимум 3, максимум 10)</button>
+        <button class="photo-button" onclick="document.getElementById('photoInput').click()">Добавить фото (минимум 3, максимум 10)</button>
+        <input type="file" id="photoInput" multiple accept="image/*" onchange="handlePhotoUpload()" />
 
         <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
     </div>
@@ -316,57 +321,29 @@
 
         let selectedPhotos = [];
 
-        function updateFishList() {
-            const lake = document.getElementById('lake').value;
-            const fishList = fishByWater[lake] || [];
-            const fishSelect = document.getElementById('fish');
-            fishSelect.innerHTML = '';
+        function handlePhotoUpload() {
+            const input = document.getElementById('photoInput');
+            const files = input.files;
 
-            fishList.forEach(fish => {
-                const option = document.createElement('option');
-                option.value = fish;
-                option.textContent = fish;
-                fishSelect.appendChild(option);
-            });
-        }
-
-        updateFishList();
-
-        function updateButtonText() {
-            const lake = document.getElementById('lake').value;
-            const button = document.getElementById('publishButton');
-
-            if (lake === "Лосиное") {
-                button.textContent = "Опубликовать на Лосиное";
-            } else {
-                button.textContent = "Опубликовать данные";
-            }
-        }
-
-        function openGallery() {
-            if (selectedPhotos.length >= 10) {
-                alert("Вы не можете выбрать больше 10 фото.");
+            if (files.length + selectedPhotos.length > 10) {
+                alert("Вы можете выбрать не более 10 фото.");
                 return;
             }
 
-            Telegram.WebApp.request({
-                type: 'photo',
-                onSuccess: function(photo) {
-                    if (selectedPhotos.length < 10) {
-                        uploadImage(photo);  // Загружаем выбранное изображение на ImgBB
-                    }
-                },
-                onError: function(error) {
-                    console.log('Ошибка при загрузке фотографии: ', error);
-                    alert('Ошибка при выборе фотографии');
-                }
-            });
+            // Добавляем выбранные фото
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    uploadImage(reader.result);  // Загружаем изображение на ImgBB
+                };
+                reader.readAsDataURL(files[i]); // Считываем файл как URL
+            }
         }
 
-        function uploadImage(file) {
+        function uploadImage(imageData) {
             const apiKey = '00c6b30539d8a50da392574247b30e1a';  // Ваш API-ключ ImgBB
             const formData = new FormData();
-            formData.append('image', file);
+            formData.append('image', imageData);
 
             fetch(`https://api.imgbb.com/1/upload?expiration=10800&key=${apiKey}`, {
                 method: 'POST',
@@ -390,6 +367,7 @@
             });
         }
 
+        // Обновляем информацию о количестве выбранных фото
         function updatePhotoCount() {
             const photoCount = selectedPhotos.length;
             document.getElementById("photoCountInfo").textContent = `Выбрано ${photoCount} фото. Минимум 3, максимум 10.`;
@@ -400,11 +378,6 @@
         }
 
         function sendDataToTelegram() {
-            if (selectedPhotos.length < 3) {
-                alert("Необходимо выбрать минимум 3 фото.");
-                return;
-            }
-
             const category = document.getElementById('category').value;
             const lake = document.getElementById('lake').value;
             const fish = document.getElementById('fish').value;
@@ -414,6 +387,11 @@
             const speed = document.getElementById('speed').value;
             const square = document.getElementById('square').value;
             const comment = document.getElementById('comment').value;
+
+            if (selectedPhotos.length < 3) {
+                alert("Необходимо выбрать минимум 3 фото.");
+                return;
+            }
 
             const data = `# ${category.toLowerCase()}_PP4Farm\n` +
                          `# ${lake}_PP4Farm 💥\n` +
@@ -429,12 +407,12 @@
             if (groupLink) {
                 Telegram.WebApp.sendData(data + `\n\nГруппа для публикации: ${groupLink}`);
 
-                selectedPhotos.forEach(function(photo) {
+                selectedPhotos.forEach(function (photo) {
                     Telegram.WebApp.sendData(photo.imageUrl);  // Отправляем ссылку на изображение
                 });
 
                 // Удаляем изображения после отправки
-                selectedPhotos.forEach(function(photo) {
+                selectedPhotos.forEach(function (photo) {
                     deleteImage(photo.deleteUrl);  // Удаляем изображения с ImgBB
                 });
             } else {
