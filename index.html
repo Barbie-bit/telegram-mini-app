@@ -1,161 +1,544 @@
-import json
-import os
-from aiogram import Bot, Dispatcher, F
-from aiogram.enums import ParseMode
-from aiogram.filters import Command
-from aiogram.types import Message, WebAppData, InputMediaPhoto
-from aiogram.utils.keyboard import ReplyKeyboardMarkup, KeyboardButton
-from aiogram import Router
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID   = int(os.getenv("TARGET_CHAT_ID"))  # id супергруппы PP4Farm
-THREADS_FILE = os.getenv("THREADS_FILE", "threads.json")
-
-dp = Dispatcher()
-router = Router()
-dp.include_router(router)
-
-# хранилище соответствий "водоём -> message_thread_id"
-def load_threads():
-    if os.path.exists(THREADS_FILE):
-        with open(THREADS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_threads(mapping):
-    with open(THREADS_FILE, "w", encoding="utf-8") as f:
-        json.dump(mapping, f, ensure_ascii=False, indent=2)
-
-threads = load_threads()
-
-def category_hashtag_and_emojis(category: str):
-    cat = (category or "").strip().lower()
-    if cat == "фарм":
-        return "#фарм_PP4Farm", ""
-    if cat == "трофей":
-        return "#трофей_PP4Farm", "💥"
-    if cat == "уникальное":
-        # по ТЗ — те же теги, плюс 💥🌸
-        return "#трофей_PP4Farm", "💥🌸"
-    # fallback
-    return "#фарм_PP4Farm", ""
-
-def lake_hashtag(lake: str):
-    m = {
-        "Лосиное": "#лосиное_PP4Farm",
-        "Комариное": "#комариное_PP4Farm",
-        "Вьюнок": "#вьюнок_PP4Farm",
-        "Белая": "#белая_PP4Farm",
-        "Острог": "#острог_PP4Farm",
-        "Куори": "#куори_PP4Farm",
-        "Медвежье": "#медвежье_PP4Farm",
-        "Волхов": "#волхов_PP4Farm",
-        "Донец": "#донец_PP4Farm",
-        "Сура": "#сура_PP4Farm",
-        "Ладожское": "#ладожское_PP4Farm",
-        "Архипелаг": "#архипелаг_PP4Farm",
-        "Янтарное": "#янтарное_PP4Farm",
-        "Ахтуба": "#ахтуба_PP4Farm",
-        "Медное": "#медное_PP4Farm",
-        "Тунгуска": "#тунгуска_PP4Farm",
-        "Яма": "#яма_PP4Farm",
-        "Норвежское море": "#норвежское_PP4Farm",
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>PP4Farm — Мини-приложение</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(255, 255, 255, 0.08);
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --accent-2: #3b82f6;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 16px;
     }
-    return m.get(lake, "")
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 600px at 100% -100%, #1e293b 10%, #0b1020 60%, #04060d 100%), var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 18px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 26px rgba(0,0,0,0.25);
+    }
+    h1 {
+      margin: 0 0 14px;
+      font-size: 22px;
+      letter-spacing: 0.2px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 680px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .grid .span2 { grid-column: span 2; }
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 2px 2px 6px;
+    }
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(15,23,42,0.6);
+      color: var(--text);
+      outline: none;
+      transition: border .15s ease, box-shadow .15s ease;
+    }
+    textarea { min-height: 84px; resize: vertical; }
+    input::placeholder, textarea::placeholder { color: #73809a; }
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(59,130,246,0.55);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .hint { font-size: 12px; color: var(--muted); }
+    .counter { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .04s ease, filter .2s ease, opacity .2s ease;
+      color: white;
+    }
+    .btn:active { transform: translateY(1px) scale(0.995); }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #16a34a); }
+    .btn-blue { background: linear-gradient(135deg, var(--accent-2), #2563eb); }
+    .btn-ghost {
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.25);
+      color: var(--text);
+    }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    .uploader {
+      border: 1px dashed rgba(255,255,255,0.25);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      background: rgba(2,6,23,0.45);
+    }
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .thumb {
+      width: 100%;
+      aspect-ratio: 1/1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      position: relative;
+    }
+    .thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .thumb .x {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,0,0,0.55);
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .pill {
+      display: inline-flex; gap: 6px; align-items: center;
+      padding: 6px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      font-size: 12px; color: var(--muted);
+    }
+    .temp-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .temp-btn {
+      padding: 10px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(2,6,23,0.35); color: var(--text); cursor: pointer; font-size: 13px;
+    }
+    .temp-btn.active { border-color: #f59e0b; background: rgba(245,158,11,0.18); }
+    .footer { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Рыбалка сегодня 🎣</h1>
+      <div class="grid">
+        <div>
+          <label for="category">Категория</label>
+          <select id="category">
+            <option value="Фарм">Фарм</option>
+            <option value="Трофей">Трофей</option>
+            <option value="Уникальное">Уникальное</option>
+          </select>
+        </div>
 
-@router.message(Command("start"))
-async def start(msg: Message):
-    kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Открыть форму", web_app={"url": os.getenv("WEBAPP_URL", "https://your-host/index.html")})]],
-        resize_keyboard=True
-    )
-    await msg.answer("Открой Mini App и отправь пост.", reply_markup=kb)
+        <div>
+          <label for="lake">Водоём</label>
+          <select id="lake"></select>
+        </div>
 
-@router.message(Command("bind"))
-async def bind(msg: Message):
-    # команда «/bind Янтарное» должна быть отправлена ИМЕННО внутри нужной темы
-    if not msg.is_topic_message or not msg.message_thread_id:
-        await msg.reply("Эту команду нужно отправлять внутри темы форума.")
-        return
-    parts = msg.text.split(maxsplit=1)
-    if len(parts) < 2:
-        await msg.reply("Формат: /bind <Название водоёма>")
-        return
-    lake = parts[1].strip()
-    threads[lake] = msg.message_thread_id
-    save_threads(threads)
-    await msg.reply(f"Связал тему {msg.message_thread_id} с водоёмом «{lake}».")
+        <div>
+          <label for="fish">Рыба</label>
+          <select id="fish"></select>
+        </div>
 
-@router.message(F.web_app_data)
-async def handle_webapp(msg: Message):
-    data: WebAppData = msg.web_app_data
-    try:
-        payload = json.loads(data.data)
-    except Exception as e:
-        await msg.answer("Не смог прочитать данные из Mini App.")
-        return
+        <div>
+          <label for="coordinates">Координаты <span class="hint">(например 56.1234:92.5678)</span></label>
+          <input type="text" id="coordinates" placeholder="56.1234:92.5678" />
+        </div>
 
-    if payload.get("type") != "post_form":
-        await msg.answer("Неизвестный тип данных из Mini App.")
-        return
+        <div>
+          <label for="clips">Клипса</label>
+          <input type="text" id="clips" inputmode="numeric" placeholder="например 25" />
+        </div>
 
-    category = payload.get("category")
-    lake     = payload.get("lake")
-    fish     = payload.get("fish")
-    coords   = payload.get("coordinates")
-    depth    = payload.get("depth")
-    clips    = payload.get("clips")
-    speed    = payload.get("speed")
-    square   = payload.get("square")
-    comment  = payload.get("comment")
-    photos   = payload.get("photos", [])[:10]
+        <div>
+          <label for="depth">Глубина</label>
+          <input type="text" id="depth" inputmode="numeric" placeholder="например 2.5" />
+        </div>
 
-    if len(photos) < 3:
-        await msg.answer("Нужно минимум 3 фото.")
-        return
+        <div>
+          <label for="speed">Скорость</label>
+          <input type="text" id="speed" inputmode="numeric" placeholder="например 20" />
+        </div>
 
-    cat_tag, emojis = category_hashtag_and_emojis(category)
-    lake_tag = lake_hashtag(lake)
+        <div>
+          <label for="square">Квадрат</label>
+          <input type="text" id="square" placeholder="например D4" />
+        </div>
 
-    # формируем подпись для первой фотографии
-    lines = [
-        cat_tag + (f" {emojis}" if emojis else ""),
-        lake_tag if lake_tag else "",
-        f"🐟 {fish}" if fish else "",
-        f"📌 Точка: {coords}" if coords else "",
-        f"🎣 Клипса: {clips}" if clips else "",
-        f"⏬ Глубина: {depth}" if depth else "",
-        f"⚡ Скорость: {speed}" if speed else "",
-        f"🗺 Квадрат: {square}" if square else "",
-        f"💬 Комментарий: {comment}" if comment else "",
-    ]
-    caption = "\n".join([l for l in lines if l])
+        <div class="span2" id="tempBlock" class="hidden">
+          <label>Температура воды</label>
+          <div class="temp-row" id="tempRow">
+            <button type="button" class="temp-btn" data-temp="Пониженная">Пониженная</button>
+            <button type="button" class="temp-btn" data-temp="Нормальная">Нормальная</button>
+            <button type="button" class="temp-btn" data-temp="Повышенная">Повышенная</button>
+            <button type="button" class="temp-btn" id="tempSkip" data-temp="">Пропустить</button>
+          </div>
+          <div class="counter" id="tempChosen" aria-live="polite"></div>
+        </div>
 
-    # собираем InputMediaPhoto
-    media = []
-    for i, url in enumerate(photos):
-        if i == 0:
-            media.append(InputMediaPhoto(media=url, caption=caption, parse_mode=ParseMode.HTML))
-        else:
-            media.append(InputMediaPhoto(media=url))
+        <div class="span2">
+          <label for="comment">Комментарий</label>
+          <textarea id="comment" maxlength="900" placeholder="до 900 символов"></textarea>
+          <div class="row" style="margin-top:6px">
+            <span class="pill">ℹ️ Фотографии мониторов могут быть отклонены модераторами</span>
+          </div>
+        </div>
 
-    thread_id = threads.get(lake)
-    if not thread_id:
-        await msg.answer(f"Для «{lake}» не привязана тема. Админу: зайдите в нужную тему и выполните /bind {lake}")
-        return
+        <div class="span2">
+          <div class="uploader">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <strong>Скриншоты / фото</strong>
+                <div class="hint">Минимум 3 — максимум 10. Изображения будут автоматически сжаты и сгруппированы.</div>
+              </div>
+              <div>
+                <button class="btn btn-blue" id="pickBtn" type="button">Добавить фото</button>
+                <input type="file" id="photoInput" class="hidden" accept="image/*" multiple />
+              </div>
+            </div>
+            <div class="counter" id="photoCountInfo">Выбрано 0 фото.</div>
+            <div class="thumbs" id="thumbs"></div>
+          </div>
+        </div>
 
-    # публикуем в тему
-    await msg.bot.send_media_group(
-        chat_id=CHAT_ID,
-        message_thread_id=thread_id,
-        media=media
-    )
-    await msg.answer("Опубликовано ✅")
+        <div class="span2 footer">
+          <button class="btn btn-ghost" type="button" id="resetBtn">Сбросить</button>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" type="button" id="sendBtn">Отправить в Telegram</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-def main():
-    from aiogram import asyncio
-    bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
-    asyncio.run(dp.start_polling(bot))
+  <script>
+    // --- Telegram WebApp glue ---
+    const tg = window.Telegram ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.expand();
+      tg.ready();
+      tg.MainButton.hide();
+      tg.enableClosingConfirmation();
+    }
 
-if __name__ == "__main__":
-    main()
+    // --- Data ---
+    const LAKES_WITH_TEMP = new Set(["Медвежье", "Янтарное", "Медное"]);
+
+    const fishByWater = {
+      "Лосиное": ["Вармоус","Горбыль речной","Доросома северная","Краппи белый","Краппи чёрный","Лаврак полосатый","Лаврак полосатый гибрид","Окунь белый","Окунь большеротый","Окунь малоротый","Окунь павлиний","Окунь пятнистый","Панцирник пятнистый","Солнечник красноухий","Солнечник синежаберный","Сомик канальный","Сомик оливковый","Судак светлопёрый","Щука панцирная"],
+      "Комариное": ["Вьюн","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп зеркальный","Карп Кои Мидори-гои","Карп чешуйчатый","Лещ","Линь","Линь золотистый","Лягушка","Окунь","Плотва обыкновенная","Ротан","Сом","Уклейка","Щука обыкновенная","Язь"],
+      "Вьюнок": ["Разнорыбица","Белоглазка","Берш","Голавль","Густера","Дрейссена речная","Елец","Ёрш","Ёрш-носарь","Жерех","Карась золотой","Карась серебряный","Карп чешуйчатый","Лещ","Линь","Лягушка","Налим","Окунь","Перловица","Пескарь обыкновенный","Плотва обыкновенная","Подуст","Рак речной","Ротан","Синец","Сом","Судак","Уклейка","Щука обыкновенная","Язь"],
+      "Белая": ["Разнорыбица","Белоглазка","Голавль","Густера","Елец","Ёрш","Жерех","Карась золотой","Карась серебрянный","Карп чешуйчатый","Лещ","Лягушка","Налим","Окунь","Перловица","Пескарь обыкновенный","Плотва обыкновенная","Подуст","Рак речной","Сиг-пыжьян","Сом","Стерлядь","Судак","Таймень","Уклейка","Форель ручьевая","Хариус европейский","Хариус западносибирский","Щука обыкновенная","Язь"],
+      "Острог": ["Разнорыбица","Амур белый","Амур чёрный","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп чешуйчатый","Лещ","Линь","Лягушка","Налим","Окунь","Плотва обыкновенная","Ротан","Сиг острожский","Сом","Угорь","Уклейка","Щука обыкновенная","Язь"],
+      "Куори": ["Разнорыбица","Голец арктический","Голец Куорский","Гольян","Густера","Ёрш","Карась золотой","Карась серебряный","Карп чешуйчатый","Лещ","Лягушка","Налим","Окунь","Палия обыкновенная","Пелядь","Плотва обыкновенная","Ряпушка","Сиг куорский","Форель озёрная","Форель радужная","Форель ручьевая","Форель севанская","Хариус европейский","Щука обыкновенная","Язь"],
+      "Медвежье": ["Разнорыбица","Амур белый","Амур белый альбинос","Амур чёрный","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп голый","Карп зеркальный","Карп чешуйчатый","Лещ","Линь","Линь золотистый","Лягушка","Налим","Окунь","Перловица","Плотва обыкновенная","Ротан","Уклейка","Усач альбинос","Усач обыкновенный","Щука обыкновенная","Язь"],
+      "Волхов": ["Разнорыбица","Белоглазка","Голавль","Густера","Дрейссена речная","Елец","Ёрш","Жерех","Карась золотой","Карась серебряный","Карп чешуйчатый","Лещ","Линь","Лосось атлантический","лосось ладожский","Лягушка","Налим","Окунь","Перловица","Пескарь обыкновенный","Плотва обыкновенная","Подуст","Рак речной","Ротан","Рыбец","Ряпушка","Синец","Сом","Судак","Угорь","Уклейка","Щука обыкновенная","Язь"],
+      "Донец": ["Разнорыбица","Амур белый","Белоглазка","Белуга черноморская","Берш","Вырезуб","Голавль","Густера","Дрейссена речная","Елец","Ёрш","Ёрш-носарь","Жерех","Карась золотой","Карась серебряный","Карп чешуйчатый","Краснопёрка","Лещ","Линь","Лягушка","Минога Украинская","Налим","Окунь","Окунь солнечный","Осётр Русский","Перловица","Пескарь обыкновенный","Плотва обыкновенная","Подуст","Рак речной","Сазан","Сельдь черноморская","Уклейка","Чехонь","Шемая черноморская","Щука обыкновенная","Язь"],
+      "Сура": ["Разнорыбица","Белоглазка","Берш","Голавль","Густера","Дрейссена речная","Елец","Ёрш","Жерех","Карась золотой","Карась серебряный","Карп чешуйчатый","Краснопёрка","Лещ","Линь","Лягушка","Налим","Окунь","Осётр Русский","Перловица","Пескарь обыкновенный","Плотва обыкновенная","Подуст","Рак речной","Ротан","Рыбец","Сазан","Синец","Сом","Стерлядь","Судак","Толстолобик белый","толстолобик пёстрый","Угорь","Уклейка","Чехонь","Щука обыкновенная","Язь"],
+      "Ладожское": ["Разнорыбица","Белоглазка","Голавль","Гольян","Густера","Елец","Ёрш","Карась золотой","Карась серебряный","Карп чешуйчатый","Колюшка трёхиглая","Корюшка","Лещ","Лосось атлантический","Лосось ладожский","Лягушка","Налим","Окунь","Осётр балтийский","Палия обыкновенная","Плотва обыкновенная","Рипус","Рыбец","Ряпушка","Сиг Валаамский","Сиг Волховский","Сиг Вуоксинский","Сиг-Лудога","Синец","Сом","Судак","Угорь","Уклейка","Форель озёрная","Хариус европейский","Щука обыкновенная","Язь"],
+      "Архипелаг": ["Разнорыбица","Белоглазка","Голавль","Гольян","Густера","Елец","Ёрш","Карась золотой","Карась серебряный","Карп чешуйчатый","Колюшка трёхиглая","Корюшка","Лещ","Лосось атлантический","Лосось ладожский","Налим","Окунь","омуль Байкальский","Осётр Балтийский","Осётр Ладожский","Палия кряжевая","Палия лудожная","Палия обыкновенная","Рыбец","Ряпушка","Сиг Валаамский","Сиг Волховский","Сиг Вуоксинский","Сиг Ладожский озёрный","Сиг Свирский","Сиг чёрный","Сиг-Лудога","Синец","Сом","Судак","Угорь","Уклейка","Форель озёрная","Хариус европейский","Щука обыкновенная","Язь"],
+      "Янтарное": ["Разнорыбица","Амур белый","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп голый","Карп голый - альбинос","Карп голый - призрак","Карп зеркальный","Карп зеркальный - альбинос","Карп зеркальный - призрак","Карп красный Старвас - зеркальный","Карп красный Старвас - чешуйчатый","Карп линейный","Карп линейный - альбинос","Карп линейный - призрак","Карп рамчатый","Карп рамчатый - альбинос","Карп рамчатый - призрак","Карп чешуйчатый","Карп чешуйчатый - альбинос","Карп чешуйчатый - призрак","Лещ","Линь","Лягушка","Налим","Окунь","Плотва обыкновенная","Ротан","Сом","Угорь","Уклейка","Усач обыкновенный","Щука обыкновенная","Язь"],
+      "Ахтуба": ["Разнорыбица","Амур белый","Белоглазка","Белорыбица","Белуга каспийская","Буффало большеротый","Буффало чёрный","Вобла","Вьюн","Голавль","Густера","Дрейссена речная","Елец","Ёрш","Жерех","Карась золотой","Карась серебряный","Карп чешуйчатый","Колюшка малая южная","Краснопёрка","Кутум","Лещ","Лещ восточный","Линь","Лосось каспийский","Лягушка","Минога каспийская","Налим","Окунь","Осётр Персидский","Осётр Русский","Перловица","Пескарь обыкновенный","Плотва обыкновенная","Подуст","Пузанок каспийский","Рак речной","Сазан","Севрюга","Сельдь Бражникова","Сельдь Кесслера","Синец","Сом","Сом альбинос","Стерлядь","Судак","Толстолобик белый","Толстолобик пёстрый","Уклейка","Усач короткоголовый","Чехонь","Шемая каспийская","Шип","Щука обыкновенная","Язь"],
+      "Медное": ["Разнорыбица","Голавль","Густера","Ёрш","Карасекарп","Карась золотой","Карась серебряный","Карп голый","Карп Динкенбюльский голый","Карп Динкенбюльский зеркальный","Карп Динкенбюльский линейный","Карп зеркальный","Карп Кои Ёцусиро","Карп Кои Кохаку","Карп Кои Мамэсибори Госики","Карп Кои Хи Уцури","Карп Супер Фрикс","Карп чешуйчатый","Лещ","Линь","Линь Квольсдорфский","Лягушка","Окунь","Плотва обыкновенная","ротан","Уклейка","Усач обыкновенный","Щука обыкновенная","Язь"],
+      "Тунгуска": ["Разнорыбица","Валёк","Голец арктический","Голец Дерягина","Голец сибирский-усач","Гольян озёрный","Горбуша","Елец сибирский","Ёрш","Карась золотой","Карась серебряный","Колюшка трёхиглая","Корюшка азиатская","Ленок остроносый","Лещ восточный","Линь","Лягушка","Минога сибирская","Муксун","Налим","Нельма","Окунь","Омуль арктический","омуль Байкальский","Осётр восточносибирский","Пелядь","Перловица","пескарь сибирский","Плотва сибирская","Подкаменщик сибирский","Ряпушка сибирская","Сиг-пыжьян","Сом амурский","Стерлядь сибирская","Таймень","Тугун","Форель ручьевая","Хариус восточносибирский","Хариус западносибирский","Чир","Щука обыкновенная","Язь"],
+      "Яма": ["Разнорыбица","Валёк","Голец арктический","Голец Леванидова","Голец сибирский-усач","Горбуша","Калуга","Кета","Кижуч","Колюшка девятииглая","Корюшка азиатская","Краснопёр Монгольский","Краснопёр-Угай крупночешуйчатый","Кунджа","Ленок острорылый","Ленок тупорылый","Мальма","Микижа","Минога дальневосточная","Минога трёхзубая","Налим","Нейва","Нерка","Окунь","Сима","Сима жилая","Хариус восточносибирский","Чавыча","Чукучан"],
+      "Норвежское море": ["Разнорыбица","Акула гигантская","Акула гренладская полярная","Акула плащеносная","Акула сельдевая","Бельдюга европейская","Берикс красный","Гимантолоф атлантический","Горбыль серебристый","Гребешок исландский","Зубатка полостатая","Зубатка пятнистая","Зубатка синяя","Кальмар обыкновенный","Камбала морская","Камбала палтусовидная","Камбала хоботная","Катран","Керчак европейский","Конгер","Краб камчатский","Краб съедобный","Ликод полуолый","Ликод Эсмарка","Макрель атлантическая","Макрурус северный","Менёк","Мерланг","Мерлуза","Меч-рыба","Мидия","Мольва голубая","Мольва обыкновенная","Морской чёрт","Окунь каменный","Окунь морской золотстый","Окунь морской норвежский","Окунь-клювач","Опах краснопёрый","палтус атлантический","Палтус синекорый","пикша","Пинагор","Поллак","Путассу северная","Сайда","Сайра атлантическая","Сардина европейская","Сельдь атлантическая","Скат колючий","Скат полярный","Треска атлантическая","Тунец голубой","Тюрбо","Угольщик обыкновенный","Устрица съедобная","Химера европейская","Центролоф чёрный"]
+    };
+
+    const allLakes = Object.keys(fishByWater).sort((a,b)=>a.localeCompare(b,'ru'));
+
+    // --- State ---
+    const state = {
+      photos: [],           // { url, preview }
+      uploading: 0,
+      temp: "",             // Пониженная/Нормальная/Повышенная/""
+      imgbbKey: "IMGBB_API_KEY_HERE" // <-- ЗАМЕНИТЕ
+    };
+
+    // --- DOM ---
+    const el = (id) => document.getElementById(id);
+    const lakeEl = el('lake');
+    const fishEl = el('fish');
+    const tempBlock = el('tempBlock');
+    const tempRow = el('tempRow');
+    const tempChosen = el('tempChosen');
+    const photoInput = el('photoInput');
+    const thumbs = el('thumbs');
+    const photoCountInfo = el('photoCountInfo');
+    const sendBtn = el('sendBtn');
+    const pickBtn = el('pickBtn');
+    const resetBtn = el('resetBtn');
+
+    // --- Init selects ---
+    function populateLakes() {
+      lakeEl.innerHTML = "";
+      for (const name of allLakes) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        lakeEl.appendChild(opt);
+      }
+      updateFishList();
+      updateTempVisibility();
+    }
+
+    function updateFishList() {
+      const lake = lakeEl.value;
+      const fishes = fishByWater[lake] || [];
+      fishEl.innerHTML = "";
+      for (const f of fishes) {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f;
+        fishEl.appendChild(opt);
+      }
+      updateTempVisibility();
+    }
+
+    function updateTempVisibility() {
+      const lake = lakeEl.value;
+      const needTemp = LAKES_WITH_TEMP.has(lake);
+      tempBlock.classList.toggle('hidden', !needTemp);
+      if (!needTemp) {
+        state.temp = "";
+        tempChosen.textContent = "";
+        for (const btn of tempRow.querySelectorAll('.temp-btn')) btn.classList.remove('active');
+      }
+    }
+
+    // temperature selection
+    tempRow?.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.temp-btn');
+      if (!btn) return;
+      for (const b of tempRow.querySelectorAll('.temp-btn')) b.classList.remove('active');
+      btn.classList.add('active');
+      state.temp = btn.dataset.temp || "";
+      tempChosen.textContent = state.temp ? `Выбрано: ${state.temp}` : `Выбор пропущен`;
+    });
+
+    // --- Photo handling ---
+    pickBtn.addEventListener('click', ()=> photoInput.click());
+    photoInput.addEventListener('change', onFilesChosen);
+
+    async function onFilesChosen() {
+      const files = Array.from(photoInput.files || []);
+      if (!files.length) return;
+
+      if (state.photos.length + files.length > 10) {
+        alert("Можно выбрать максимум 10 фото.");
+        return;
+      }
+      disableSend(true);
+      for (const file of files) {
+        try {
+          const {base64, preview} = await compressToBase64(file, {maxSide: 1600, quality: 0.82});
+          await uploadToImgBB(base64, preview);
+          updatePhotoUI();
+        } catch (e) {
+          console.error(e);
+          alert("Не удалось обработать или загрузить одно из изображений.");
+        }
+      }
+      disableSend(false);
+      photoInput.value = ""; // reset picker
+    }
+
+    function updatePhotoUI() {
+      photoCountInfo.textContent = `Выбрано ${state.photos.length} фото. Минимум 3, максимум 10.`;
+      thumbs.innerHTML = "";
+      state.photos.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'thumb';
+        div.innerHTML = `<img src="${p.preview}" alt="photo ${idx+1}" />
+                         <span class="x" data-i="${idx}">×</span>`;
+        thumbs.appendChild(div);
+      });
+    }
+
+    thumbs.addEventListener('click', (e)=>{
+      const x = e.target.closest('.x');
+      if (!x) return;
+      const i = +x.dataset.i;
+      state.photos.splice(i,1);
+      updatePhotoUI();
+    });
+
+    function disableSend(v) {
+      sendBtn.disabled = v;
+      pickBtn.disabled = v;
+      resetBtn.disabled = v;
+      if (tg) {
+        if (v) tg.HapticFeedback.impactOccurred('medium');
+      }
+    }
+
+    // compress image to base64 via canvas
+    function compressToBase64(file, {maxSide=1600, quality=0.82}={}) {
+      return new Promise((resolve, reject)=>{
+        const img = new Image();
+        img.onload = () => {
+          const { width, height } = img;
+          let w = width, h = height;
+          const m = Math.max(w, h);
+          if (m > maxSide) {
+            const k = maxSide / m;
+            w = Math.round(w * k);
+            h = Math.round(h * k);
+          }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const preview = c.toDataURL('image/jpeg', 0.7);
+          const base64 = c.toDataURL('image/jpeg', quality).split(',')[1];
+          resolve({base64, preview});
+        };
+        img.onerror = reject;
+        const fr = new FileReader();
+        fr.onload = () => { img.src = fr.result; };
+        fr.onerror = reject;
+        fr.readAsDataURL(file);
+      });
+    }
+
+    async function uploadToImgBB(base64, preview) {
+      if (!state.imgbbKey || state.imgbbKey === "IMGBB_API_KEY_HERE") {
+        throw new Error("Не задан API-ключ ImgBB");
+      }
+      state.uploading++;
+      try {
+        const form = new FormData();
+        form.append('image', base64);
+        form.append('expiration', '10800'); // 3 часа
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(state.imgbbKey)}`, {
+          method: 'POST', body: form
+        });
+        const j = await res.json();
+        if (!j || !j.success || !j.data || !j.data.image || !j.data.image.url) {
+          console.error(j);
+          throw new Error("ImgBB вернул неожиданный ответ");
+        }
+        const directUrl = j.data.image.url; // прямая ссылка (i.ibb.co/...)
+        state.photos.push({ url: directUrl, preview });
+      } finally {
+        state.uploading--;
+      }
+    }
+
+    // --- Validation ---
+    function validCoords(s) {
+      if (!s) return true; // разрешаем пропуск
+      // форматы: 56:92 | 56.123:92.456 | 1234:5678
+      return /^[0-9]{1,4}(?:\.[0-9]{1,6})?:[0-9]{1,4}(?:\.[0-9]{1,6})?$/.test(String(s).trim());
+    }
+
+    // --- Send to Telegram ---
+    sendBtn.addEventListener('click', ()=>{
+      if (state.uploading > 0) {
+        alert("Изображения ещё загружаются. Подождите пару секунд.");
+        return;
+      }
+      if (state.photos.length < 3) {
+        alert("Нужно минимум 3 фото.");
+        return;
+      }
+      const coords = el('coordinates').value.trim();
+      if (!validCoords(coords)) {
+        alert("Координаты должны быть в формате 56:92 или 56.1234:92.5678");
+        return;
+      }
+
+      const payload = {
+        type: "post_form",
+        category: el('category').value,
+        lake: lakeEl.value,
+        fish: fishEl.value,
+        coordinates: coords || "",
+        depth: el('depth').value.trim(),
+        clips: el('clips').value.trim(),
+        speed: el('speed').value.trim(),
+        square: el('square').value.trim(),
+        temperature: LAKES_WITH_TEMP.has(lakeEl.value) ? (state.temp || "") : "",
+        comment: el('comment').value.trim(),
+        photos: state.photos.map(p => p.url)
+      };
+
+      try {
+        const json = JSON.stringify(payload);
+        if (tg) {
+          tg.sendData(json);
+          tg.HapticFeedback.notificationOccurred('success');
+        } else {
+          console.log("Telegram.WebApp not found, payload:", json);
+          alert("Демо-режим: смотрите payload в консоли.");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Не удалось отправить данные в Telegram.");
+      }
+    });
+
+    // --- Reset ---
+    resetBtn.addEventListener('click', ()=>{
+      el('category').value = "Фарм";
+      lakeEl.selectedIndex = 0;
+      updateFishList();
+      el('coordinates').value = "";
+      el('depth').value = "";
+      el('clips').value = "";
+      el('speed').value = "";
+      el('square').value = "";
+      el('comment').value = "";
+      state.photos = [];
+      state.temp = "";
+      for (const btn of tempRow.querySelectorAll('.temp-btn')) btn.classList.remove('active');
+      tempChosen.textContent = "";
+      updatePhotoUI();
+      if (tg) tg.HapticFeedback.impactOccurred('light');
+    });
+
+    // --- Wiring ---
+    lakeEl.addEventListener('change', ()=>{
+      updateFishList();
+      if (tg) tg.HapticFeedback.selectionChanged();
+    });
+
+    // --- Boot ---
+    populateLakes();
+    updatePhotoUI();
+  </script>
+</body>
+</html>
