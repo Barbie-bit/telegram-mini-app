@@ -53,6 +53,20 @@
             font-size: 16px;
             margin-bottom: 5px;
         }
+
+        .photo-button {
+            background-color: #007bff; /* Синяя кнопка для фото */
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +126,9 @@
         <input type="text" id="comment">
 
         <button class="button" id="publishButton" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
+
+        <!-- Кнопка для добавления фото -->
+        <button class="photo-button" id="addPhotoButton" onclick="openGallery()">Добавить фото</button>
     </div>
 
     <script>
@@ -300,7 +317,7 @@
             const lake = document.getElementById('lake').value;
             const fishList = fishByWater[lake] || [];
             const fishSelect = document.getElementById('fish');
-            fishSelect.innerHTML = ''; // Очищаем предыдущие варианты
+            fishSelect.innerHTML = '';
 
             fishList.forEach(fish => {
                 const option = document.createElement('option');
@@ -310,20 +327,14 @@
             });
         }
 
-        // Инициализация списка рыб для первого водоёма
         updateFishList();
 
         function updateButtonText() {
             const lake = document.getElementById('lake').value;
             const button = document.getElementById('publishButton');
             
-            // Меняем текст кнопки в зависимости от выбранного водоёма
             if (lake === "Лосиное") {
                 button.textContent = "Опубликовать на Лосиное";
-            } else if (lake === "Комариное") {
-                button.textContent = "Опубликовать на Комариное";
-            } else if (lake === "Вьюнок") {
-                button.textContent = "Опубликовать на Вьюнок";
             } else {
                 button.textContent = "Опубликовать данные";
             }
@@ -335,7 +346,7 @@
             Telegram.WebApp.request({
                 type: 'photo',
                 onSuccess: function(photo) {
-                    selectedPhotos.push(photo); // Добавляем выбранное фото в массив
+                    selectedPhotos.push(photo);
                     alert('Фото выбрано!');
                 },
                 onError: function(error) {
@@ -372,7 +383,7 @@
 
                 if (selectedPhotos.length > 0) {
                     selectedPhotos.forEach(function(photo) {
-                        Telegram.WebApp.sendData(photo); // Отправляем фото
+                        Telegram.WebApp.sendData(photo);
                     });
                 }
             } else {
