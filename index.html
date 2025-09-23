@@ -129,7 +129,6 @@
 
         <button class="photo-button" id="addPhotoButton" onclick="openGallery()">Добавить фото (минимум 3, максимум 10)</button>
 
-        <!-- Информация о количестве выбранных фото -->
         <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
     </div>
 
@@ -351,7 +350,8 @@
                 return;
             }
 
-            Telegram.WebApp.requestPhoto({
+            Telegram.WebApp.request({
+                type: 'photo',
                 onSuccess: function(photo) {
                     if (selectedPhotos.length < 10) {
                         selectedPhotos.push(photo);
