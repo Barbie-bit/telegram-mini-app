@@ -7,12 +7,25 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
+            background-image: url('/mnt/data/A_promotional_digital_illustration_for_"Russian_Fi.png'); /* Путь к изображению */
+            background-size: cover; /* Заполнение всего экрана */
+            background-position: center; /* Центрируем изображение */
             color: #333;
             padding: 20px;
+            height: 100vh;
+            margin: 0;
         }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.8); /* Полупрозрачный фон для блоков */
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
         .button {
-            background-color: #4CAF50; /* Green */
+            background-color: #4CAF50; /* Зеленая кнопка */
             color: white;
             padding: 15px 32px;
             text-align: center;
@@ -22,74 +35,84 @@
             margin: 4px 2px;
             cursor: pointer;
             border-radius: 4px;
+            width: 100%;
         }
+
         input, select {
             margin: 10px 0;
             padding: 8px;
             width: 100%;
             max-width: 300px;
         }
+
         .file-input {
             margin: 10px 0;
+        }
+
+        label {
+            font-size: 16px;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>Рыбалка на сегодня!</h1>
-    
-    <label for="category">Выберите категорию:</label>
-    <select id="category">
-        <option value="Фарм">Фарм</option>
-        <option value="Трофей">Трофей</option>
-        <option value="Уникальное">Уникальное</option>
-    </select>
+    <div class="container">
+        <h1>Рыбалка на сегодня!</h1>
 
-    <label for="lake">Выберите водоём:</label>
-    <select id="lake" onchange="updateFishList(); updateButtonText();">
-        <option value="Лосиное">Лосиное</option>
-        <option value="Комариное">Комариное</option>
-        <option value="Вьюнок">Вьюнок</option>
-        <option value="Белая">Белая</option>
-        <option value="Острог">Острог</option>
-        <option value="Куори">Куори</option>
-        <option value="Медвежье">Медвежье</option>
-        <option value="Волхов">Волхов</option>
-        <option value="Донец">Донец</option>
-        <option value="Сура">Сура</option>
-        <option value="Ладожское">Ладожское</option>
-        <option value="Архипелаг">Архипелаг</option>
-        <option value="Янтарное">Янтарное</option>
-        <option value="Ахтуба">Ахтуба</option>
-        <option value="Медное">Медное</option>
-        <option value="Тунгуска">Тунгуска</option>
-        <option value="Яма">Яма</option>
-        <option value="Норвежское море">Норвежское море</option>
-    </select>
+        <label for="category">Выберите категорию:</label>
+        <select id="category">
+            <option value="Фарм">Фарм</option>
+            <option value="Трофей">Трофей</option>
+            <option value="Уникальное">Уникальное</option>
+        </select>
 
-    <label for="fish">Выберите рыбу:</label>
-    <select id="fish">
-        <!-- Список рыб будет обновляться динамически -->
-    </select>
+        <label for="lake">Выберите водоём:</label>
+        <select id="lake" onchange="updateFishList(); updateButtonText();">
+            <option value="Лосиное">Лосиное</option>
+            <option value="Комариное">Комариное</option>
+            <option value="Вьюнок">Вьюнок</option>
+            <option value="Белая">Белая</option>
+            <option value="Острог">Острог</option>
+            <option value="Куори">Куори</option>
+            <option value="Медвежье">Медвежье</option>
+            <option value="Волхов">Волхов</option>
+            <option value="Донец">Донец</option>
+            <option value="Сура">Сура</option>
+            <option value="Ладожское">Ладожское</option>
+            <option value="Архипелаг">Архипелаг</option>
+            <option value="Янтарное">Янтарное</option>
+            <option value="Ахтуба">Ахтуба</option>
+            <option value="Медное">Медное</option>
+            <option value="Тунгуска">Тунгуска</option>
+            <option value="Яма">Яма</option>
+            <option value="Норвежское море">Норвежское море</option>
+        </select>
 
-    <label for="coordinates">Координаты (например, 50.1234:30.5678):</label>
-    <input type="text" id="coordinates">
+        <label for="fish">Выберите рыбу:</label>
+        <select id="fish">
+            <!-- Список рыб будет обновляться динамически -->
+        </select>
 
-    <label for="depth">Глубина:</label>
-    <input type="text" id="depth">
+        <label for="coordinates">Координаты (например, 50.1234:30.5678):</label>
+        <input type="text" id="coordinates">
 
-    <label for="clips">Клипса:</label>
-    <input type="text" id="clips">
+        <label for="depth">Глубина:</label>
+        <input type="text" id="depth">
 
-    <label for="speed">Скорость:</label>
-    <input type="text" id="speed">
+        <label for="clips">Клипса:</label>
+        <input type="text" id="clips">
 
-    <label for="square">Квадрат:</label>
-    <input type="text" id="square">
+        <label for="speed">Скорость:</label>
+        <input type="text" id="speed">
 
-    <label for="comment">Комментарий:</label>
-    <input type="text" id="comment">
+        <label for="square">Квадрат:</label>
+        <input type="text" id="square">
 
-    <button class="button" id="publishButton" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
+        <label for="comment">Комментарий:</label>
+        <input type="text" id="comment">
+
+        <button class="button" id="publishButton" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
+    </div>
 
     <script>
         const fishByWater = {
