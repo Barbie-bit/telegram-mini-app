@@ -58,7 +58,7 @@
     </select>
 
     <label for="lake">Выберите водоём:</label>
-    <select id="lake">
+    <select id="lake" onchange="updateFishList()">
       <option value="Лосиное">Лосиное</option>
       <option value="Комариное">Комариное</option>
       <option value="Вьюнок">Вьюнок</option>
@@ -83,22 +83,22 @@
     <select id="fish"></select>
 
     <label for="coordinates">Координаты:</label>
-    <input type="text" id="coordinates">
+    <input type="text" id="coordinates" placeholder="например, 50.1234:30.5678">
 
     <label for="depth">Глубина:</label>
-    <input type="text" id="depth">
+    <input type="text" id="depth" placeholder="например, 3.2">
 
     <label for="clips">Клипса:</label>
-    <input type="text" id="clips">
+    <input type="text" id="clips" placeholder="например, 25">
 
     <label for="speed">Скорость:</label>
-    <input type="text" id="speed">
+    <input type="text" id="speed" placeholder="например, 35">
 
     <label for="square">Квадрат:</label>
-    <input type="text" id="square">
+    <input type="text" id="square" placeholder="например, D6">
 
     <label for="comment">Комментарий:</label>
-    <input type="text" id="comment">
+    <input type="text" id="comment" placeholder="доп. информация">
 
     <button class="button" onclick="sendData()">Опубликовать</button>
     <button class="photo-button" onclick="document.getElementById('hiddenFileInput').click()">Добавить фото (мин. 3, макс. 10)</button>
@@ -108,21 +108,42 @@
   </div>
 
   <script>
-    // === НАСТРОЙКИ ===
+    // ===== настройки =====
     const WORKER_BASE = "https://rf-proxy.atvclub.workers.dev";
     const MAX_PHOTOS = 10;
-    const CUSTOM_EMOJI_IDS = {
-      TROPHY: "5341269699227321203",   // 💥 (из твоего набора)
-      UNIQUE: "5341321204475133248",   // 🌸 (из твоего набора)
-    };
-    // TODO: укажи ID чата (отрицательный для супергруппы)
-    const CHAT_ID = -1002123456789;
-    // TODO: если публикуем в тему — подставляй ID темы:
+
+    // chat_id твоей группы (отрицательный):
+    const CHAT_ID = -1002823326154;
+
+    // topic_id для каждой темы:
     const THREAD_BY_LAKE = {
-      // "Лосиное": 4, // пример; нужен именно numeric topic_id
+      "Лосиное": 4,
+      "Комариное": 3,
+      "Вьюнок": 5,
+      "Белая": 7,
+      "Острог": 6,
+      "Куори": 8,
+      "Медвежье": 9,
+      "Волхов": 10,
+      "Донец": 11,
+      "Сура": 12,
+      "Ладожское": 13,
+      "Архипелаг": 15,
+      "Янтарное": 14,
+      "Ахтуба": 16,
+      "Медное": 17,
+      "Тунгуска": 18,
+      "Яма": 19,
+      "Норвежское море": 20
     };
 
-    // === СПРАВОЧНИК РЫБ ===
+    // кастом-эмодзи (из твоего набора)
+    const CUSTOM_EMOJI_IDS = {
+      TROPHY: "5341269699227321203",
+      UNIQUE: "5341321204475133248",
+    };
+
+    // ===== рыбы по водоёмам =====
     const fishByWater = {
       "Лосиное": [
         "Вармоус","Горбыль речной","Доросома северная","Краппи белый","Краппи чёрный",
@@ -281,32 +302,35 @@
       ]
     };
 
-    // === ЛОГИКА КЛИЕНТА ===
+    // ===== заполнение списка рыб при смене водоёма =====
     function updateFishList() {
       const lake = document.getElementById('lake').value;
+      const fishList = fishByWater[lake] || [];
       const fishSelect = document.getElementById('fish');
       fishSelect.innerHTML = '';
-      (fishByWater[lake] || []).forEach(fish => {
+      if (fishList.length === 0) {
         const opt = document.createElement('option');
-        opt.value = fish;
-        opt.textContent = fish;
-        fishSelect.appendChild(opt);
-      });
-      if (!fishSelect.value && fishSelect.options.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = "Не выбрано";
+        opt.value = "";
         opt.textContent = "Не выбрано";
         fishSelect.appendChild(opt);
+      } else {
+        fishList.forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f;
+          opt.textContent = f;
+          fishSelect.appendChild(opt);
+        });
       }
     }
-    document.getElementById('lake').addEventListener('change', updateFishList);
     updateFishList();
 
+    // ===== фото =====
     let selectedPhotos = [];
     function updatePhotoCount() {
       document.getElementById("photoCountInfo").textContent =
         `Выбрано ${selectedPhotos.length} фото. Минимум 3, максимум 10.`;
     }
+    updatePhotoCount();
 
     async function blobToBase64(blob) {
       const buf = await blob.arrayBuffer();
@@ -320,15 +344,16 @@
     }
 
     async function uploadToImgbbViaWorker(fileBlob, name) {
+      // попытка 1: multipart
       const form = new FormData();
       form.set('file', fileBlob, (name || 'photo') + '.jpg');
-      form.set('name', name || 'photo');
       try {
         const r = await fetch(`${WORKER_BASE}/upload`, { method: 'POST', body: form, mode: 'cors' });
         const j = await r.json();
         if (j?.ok && j.url) return j.url;
         throw new Error('multipart fail');
       } catch {
+        // попытка 2: base64
         const b64 = await blobToBase64(fileBlob);
         const r2 = await fetch(`${WORKER_BASE}/upload`, {
           method: 'POST',
@@ -351,7 +376,7 @@
         try {
           const url = await uploadToImgbbViaWorker(file, file.name.replace(/\.[^.]+$/, ''));
           selectedPhotos.push({ imageUrl: url });
-        } catch {
+        } catch (err) {
           alert(`Не удалось загрузить файл: ${file.name}`);
         }
       }
@@ -359,10 +384,11 @@
       e.target.value = "";
     });
 
+    // ===== построение текста + кастом-эмодзи =====
     function buildTextAndEntities() {
       const category = document.getElementById('category').value;
       const lake = document.getElementById('lake').value;
-      const fish = document.getElementById('fish').value;
+      const fish = (document.getElementById('fish').value || "").trim();
 
       const coordinates = document.getElementById('coordinates').value.trim();
       const depth       = document.getElementById('depth').value.trim();
@@ -371,13 +397,26 @@
       const square      = document.getElementById('square').value.trim();
       const comment     = document.getElementById('comment').value.trim();
 
-      const head = [`# ${category.toLowerCase()}_PP4Farm`, `# ${lake}_PP4Farm`];
+      // верхние хэштеги + пустая строка
+      const head = [`# ${category.toLowerCase()}_PP4Farm`, `# ${lake}_PP4Farm`, ''];
 
-      let fishLine = `🐟 ${fish}`;
+      // строка рыбы (может быть пустой)
+      let fishLine = "";
       const entities = [];
-      let useCustomKey = null;
-      if (category === 'Трофей')     { fishLine += ' ◆'; useCustomKey = 'TROPHY'; }
-      if (category === 'Уникальное') { fishLine += ' ◆'; useCustomKey = 'UNIQUE'; }
+      if (fish) {
+        fishLine = `🐟 ${fish}`;
+        // для Трофей / Уникальное — добавляем маркер '◆', а в entities подставим custom_emoji
+        if (category === 'Трофей') {
+          fishLine += ' ◆';
+          // место этого символа в итоговом тексте:
+          const prefix = head.join('\n');
+          const offset = (prefix + fishLine).indexOf('◆');
+          // offset считаем ниже после сборки текста
+        }
+        if (category === 'Уникальное') {
+          fishLine += ' ◆';
+        }
+      }
 
       const details = [];
       if (coordinates) details.push(`📍 Координаты: ${coordinates}`);
@@ -387,18 +426,36 @@
       if (square)      details.push(`🗺 Квадрат: ${square}`);
       if (comment)     details.push(`💬 Комментарий: ${comment}`);
 
-      const parts = [...head, '', fishLine, ...details];
-      let text = parts.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      const parts = [...head];
+      if (fishLine) parts.push(fishLine);
+      if (details.length) parts.push(...details);
 
-      if (useCustomKey) {
-        const idx = text.indexOf('◆');
-        if (idx >= 0) {
-          entities.push({ type: 'custom_emoji', offset: idx, length: 1, custom_emoji_id: CUSTOM_EMOJI_IDS[useCustomKey] });
+      // удаляем лишние пустые строки и пробелы
+      let text = parts.join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      // выставляем caption_entities на символ '◆'
+      const useTrophy = (category === 'Трофей' && fish);
+      const useUnique = (category === 'Уникальное' && fish);
+      if (useTrophy || useUnique) {
+        const markerIndex = text.indexOf('◆');
+        if (markerIndex >= 0) {
+          entities.push({
+            type: 'custom_emoji',
+            offset: markerIndex,
+            length: 1,
+            custom_emoji_id: useTrophy ? CUSTOM_EMOJI_IDS.TROPHY : CUSTOM_EMOJI_IDS.UNIQUE
+          });
+          // убираем сам маркер из текста — Telegram покажет кастом-эмодзи вместо него
+          text = text.slice(0, markerIndex) + ' ' + text.slice(markerIndex + 1); // оставим пробел
         }
       }
+
       return { text, entities: entities.length ? entities : undefined };
     }
 
+    // ===== отправка =====
     async function sendData() {
       if (selectedPhotos.length < 3) {
         alert("Необходимо выбрать минимум 3 фото.");
@@ -415,19 +472,28 @@
         entities,
         message_thread_id
       };
-      const r = await fetch(`${WORKER_BASE}/send`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json();
-      if (!j?.ok) { alert("Ошибка публикации"); return; }
-      alert("Опубликовано!");
 
-      // Сброс состояния
-      document.querySelectorAll('input').forEach(el => el.value = "");
-      selectedPhotos = [];
-      updatePhotoCount();
+      try {
+        const r = await fetch(`${WORKER_BASE}/send`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const j = await r.json();
+        if (!j?.ok) {
+          console.log('Ошибка публикации:', j);
+          alert("Ошибка публикации");
+          return;
+        }
+        alert("Опубликовано!");
+        // сброс формы
+        document.querySelectorAll('input').forEach(el => el.value = "");
+        selectedPhotos = [];
+        updatePhotoCount();
+      } catch (e) {
+        console.error(e);
+        alert("Сеть недоступна или ошибка сервера");
+      }
     }
   </script>
 </body>
