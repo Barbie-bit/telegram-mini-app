@@ -45,7 +45,7 @@
     </select>
 
     <label for="lake">Выберите водоём:</label>
-    <select id="lake" onchange="updateFishList()">
+    <select id="lake" onchange="updateFishList(); updateButtonText();">
         <option value="Лосиное">Лосиное</option>
         <option value="Комариное">Комариное</option>
         <option value="Вьюнок">Вьюнок</option>
@@ -89,11 +89,7 @@
     <label for="comment">Комментарий:</label>
     <input type="text" id="comment">
 
-    <!-- Поле для загрузки фотографий -->
-    <label for="photos">Загрузите до 10 фотографий:</label>
-    <input type="file" id="photos" class="file-input" multiple accept="image/*">
-
-    <button class="button" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
+    <button class="button" id="publishButton" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
 
     <script>
         const fishByWater = {
@@ -275,7 +271,7 @@
             "Тунгуска": "https://t.me/PP4Farm/18",
             "Яма": "https://t.me/PP4Farm/19",
             "Норвежское море": "https://t.me/PP4Farm/20",
-        };
+         };
 
         function updateFishList() {
             const lake = document.getElementById('lake').value;
@@ -283,7 +279,6 @@
             const fishSelect = document.getElementById('fish');
             fishSelect.innerHTML = ''; // Очищаем предыдущие варианты
 
-            // Добавляем новые рыбы в список
             fishList.forEach(fish => {
                 const option = document.createElement('option');
                 option.value = fish;
@@ -292,11 +287,43 @@
             });
         }
 
-        // Инициализация первого списка рыбы
+        // Инициализация списка рыб для первого водоёма
         updateFishList();
 
+        function updateButtonText() {
+            const lake = document.getElementById('lake').value;
+            const button = document.getElementById('publishButton');
+            
+            // Меняем текст кнопки в зависимости от выбранного водоёма
+            if (lake === "Лосиное") {
+                button.textContent = "Опубликовать на Лосиное";
+            } else if (lake === "Комариное") {
+                button.textContent = "Опубликовать на Комариное";
+            } else if (lake === "Вьюнок") {
+                button.textContent = "Опубликовать на Вьюнок";
+            } else {
+                button.textContent = "Опубликовать данные";
+            }
+        }
+
+        let selectedPhotos = [];
+
+        function openGallery() {
+            Telegram.WebApp.request({
+                type: 'photo',
+                onSuccess: function(photo) {
+                    selectedPhotos.push(photo); // Добавляем выбранное фото в массив
+                    alert('Фото выбрано!');
+                },
+                onError: function(error) {
+                    console.log('Ошибка при загрузке фотографии: ', error);
+                    alert('Ошибка при выборе фотографии');
+                }
+            });
+        }
+
         function sendDataToTelegram() {
-            const category = document.getElementById('category').value; // Получаем категорию
+            const category = document.getElementById('category').value;
             const lake = document.getElementById('lake').value;
             const fish = document.getElementById('fish').value;
             const coordinates = document.getElementById('coordinates').value;
@@ -305,12 +332,6 @@
             const speed = document.getElementById('speed').value;
             const square = document.getElementById('square').value;
             const comment = document.getElementById('comment').value;
-            const photos = document.getElementById('photos').files;
-
-            let photosArray = [];
-            for (let i = 0; i < photos.length; i++) {
-                photosArray.push(photos[i]);
-            }
 
             const data = `# ${category.toLowerCase()}_PP4Farm\n` +
                          `# ${lake}_PP4Farm 💥\n` +
@@ -324,21 +345,18 @@
 
             const groupLink = groupByLake[lake];
             if (groupLink) {
-                // Отправка данных в Telegram через WebApp
                 Telegram.WebApp.sendData(data + `\n\nГруппа для публикации: ${groupLink}`);
 
-                // Отправка фотографий, если они есть
-                if (photosArray.length > 0) {
-                    for (let i = 0; i < photosArray.length; i++) {
-                        Telegram.WebApp.sendFile(photosArray[i]); // Отправляем фотографии
-                    }
+                if (selectedPhotos.length > 0) {
+                    selectedPhotos.forEach(function(photo) {
+                        Telegram.WebApp.sendData(photo); // Отправляем фото
+                    });
                 }
             } else {
                 alert("Выберите правильный водоём!");
             }
         }
 
-        // Инициализация WebApp
         Telegram.WebApp.init();
     </script>
 </body>
