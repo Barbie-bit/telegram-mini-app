@@ -7,9 +7,9 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-image: url('/mnt/data/A_promotional_digital_illustration_for_"Russian_Fi.png'); /* Путь к изображению */
-            background-size: cover; /* Заполнение всего экрана */
-            background-position: center; /* Центрируем изображение */
+            background-image: url('/mnt/data/A_promotional_digital_illustration_for_"Russian_Fi.png');
+            background-size: cover;
+            background-position: center;
             color: #333;
             padding: 20px;
             height: 100vh;
@@ -17,7 +17,7 @@
         }
 
         .container {
-            background-color: rgba(255, 255, 255, 0.8); /* Полупрозрачный фон для блоков */
+            background-color: rgba(255, 255, 255, 0.8);
             border-radius: 10px;
             padding: 20px;
             max-width: 600px;
@@ -25,9 +25,23 @@
         }
 
         .button {
-            background-color: #4CAF50; /* Зеленая кнопка */
+            background-color: #4CAF50;
             color: white;
             padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .photo-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
@@ -45,27 +59,15 @@
             max-width: 300px;
         }
 
-        .file-input {
-            margin: 10px 0;
-        }
-
         label {
             font-size: 16px;
             margin-bottom: 5px;
         }
 
-        .photo-button {
-            background-color: #007bff; /* Синяя кнопка для фото */
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 4px;
-            width: 100%;
+        #photoCountInfo {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
         }
     </style>
 </head>
@@ -103,9 +105,7 @@
         </select>
 
         <label for="fish">Выберите рыбу:</label>
-        <select id="fish">
-            <!-- Список рыб будет обновляться динамически -->
-        </select>
+        <select id="fish"></select>
 
         <label for="coordinates">Координаты (например, 50.1234:30.5678):</label>
         <input type="text" id="coordinates">
@@ -127,8 +127,10 @@
 
         <button class="button" id="publishButton" onclick="sendDataToTelegram()">Отправить данные в Telegram</button>
 
-        <!-- Кнопка для добавления фото -->
-        <button class="photo-button" id="addPhotoButton" onclick="openGallery()">Добавить фото</button>
+        <button class="photo-button" id="addPhotoButton" onclick="openGallery()">Добавить фото (минимум 3, максимум 10)</button>
+
+        <!-- Информация о количестве выбранных фото -->
+        <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
     </div>
 
     <script>
@@ -313,12 +315,14 @@
             "Норвежское море": "https://t.me/PP4Farm/20",
          };
 
+        let selectedPhotos = [];
+
         function updateFishList() {
             const lake = document.getElementById('lake').value;
             const fishList = fishByWater[lake] || [];
             const fishSelect = document.getElementById('fish');
             fishSelect.innerHTML = '';
-
+            
             fishList.forEach(fish => {
                 const option = document.createElement('option');
                 option.value = fish;
@@ -340,20 +344,35 @@
             }
         }
 
-        let selectedPhotos = [];
-
+        // Открытие галереи для добавления фото
         function openGallery() {
-            Telegram.WebApp.request({
-                type: 'photo',
+            if (selectedPhotos.length >= 10) {
+                alert("Вы не можете выбрать больше 10 фото.");
+                return;
+            }
+
+            Telegram.WebApp.requestPhoto({
                 onSuccess: function(photo) {
-                    selectedPhotos.push(photo);
-                    alert('Фото выбрано!');
+                    if (selectedPhotos.length < 10) {
+                        selectedPhotos.push(photo);
+                        updatePhotoCount();
+                    }
                 },
                 onError: function(error) {
                     console.log('Ошибка при загрузке фотографии: ', error);
                     alert('Ошибка при выборе фотографии');
                 }
             });
+        }
+
+        // Обновляем информацию о количестве выбранных фото
+        function updatePhotoCount() {
+            const photoCount = selectedPhotos.length;
+            document.getElementById("photoCountInfo").textContent = `Выбрано ${photoCount} фото. Минимум 3, максимум 10.`;
+
+            if (photoCount < 3) {
+                alert("Необходимо выбрать минимум 3 фото.");
+            }
         }
 
         function sendDataToTelegram() {
@@ -366,6 +385,11 @@
             const speed = document.getElementById('speed').value;
             const square = document.getElementById('square').value;
             const comment = document.getElementById('comment').value;
+
+            if (selectedPhotos.length < 3) {
+                alert("Необходимо выбрать минимум 3 фото.");
+                return;
+            }
 
             const data = `# ${category.toLowerCase()}_PP4Farm\n` +
                          `# ${lake}_PP4Farm 💥\n` +
@@ -381,11 +405,9 @@
             if (groupLink) {
                 Telegram.WebApp.sendData(data + `\n\nГруппа для публикации: ${groupLink}`);
 
-                if (selectedPhotos.length > 0) {
-                    selectedPhotos.forEach(function(photo) {
-                        Telegram.WebApp.sendData(photo);
-                    });
-                }
+                selectedPhotos.forEach(function(photo) {
+                    Telegram.WebApp.sendData(photo);
+                });
             } else {
                 alert("Выберите правильный водоём!");
             }
