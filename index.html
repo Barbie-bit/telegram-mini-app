@@ -144,7 +144,14 @@
         const GROUP_USERNAME = "PP4Farm"; // одна супергруппа с темами
         const MAX_PHOTOS = 10;
         const MIN_PHOTOS = 3;
-        const MAX_PIXELS = 2000; // длинная сторона
+
+        // Определяем Telegram Desktop (там вебвью требовательнее к POST)
+        function isTelegramDesktop() {
+          const ua = (navigator.userAgent || '').toLowerCase();
+          return ua.includes('telegramdesktop') || ua.includes('tdesktop');
+        }
+        // Для desktop уменьшаем итоговый размер фото
+        const MAX_PIXELS = isTelegramDesktop() ? 1280 : 2000;  // мобильный 2000px, desktop 1280px
         const JPEG_QUALITY = 0.85;
 
         // Водоём -> ссылка на тему (последний сегмент = message_thread_id)
@@ -169,7 +176,7 @@
             "Норвежское море": "https://t.me/PP4Farm/20",
         };
 
-        // ===== Справочник рыб (твой, визуал не меняем) =====
+        // ===== Справочник рыб (твой, без визуальных изменений) =====
         const fishByWater = {
             "Лосиное": [
                 "Вармоус", "Горбыль речной", "Доросома северная", "Краппи белый", "Краппи чёрный",
@@ -357,7 +364,7 @@
             }
         }
 
-        // ===== Новая подкапотная логика =====
+        // ===== Подкапотная логика =====
 
         function openGallery() {
             if (selectedPhotos.length >= MAX_PHOTOS) {
@@ -367,7 +374,7 @@
             document.getElementById('hiddenFileInput').click();
         }
 
-        // 2.1 Конвертация в JPEG -> Blob (не base64)
+        // JPEG -> Blob (без base64, стабильнее в Telegram webview)
         async function reencodeToJpegBlob(file) {
             if (file.size > 40 * 1024 * 1024) {
                 throw new Error(`Слишком большой файл (${(file.size/1024/1024).toFixed(1)} MB).`);
@@ -394,22 +401,39 @@
             return blob;
         }
 
-        // 2.2 Загрузка на imgbb через воркер (multipart/form-data)
+        // Загрузка на воркер (multipart/form-data), с учётом Desktop
         async function uploadToImgbbViaWorker(fileBlob, name){
             const form = new FormData();
             form.set('file', fileBlob, (name || 'photo') + '.jpg');
             form.set('name', name || 'photo');
 
-            const r = await fetch(`${WORKER_BASE}/upload`, { method: 'POST', body: form });
-            const j = await r.json();
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30_000); // 30s safety
+
+            const r = await fetch(`${WORKER_BASE}/upload`, {
+                method: 'POST',
+                body: form,
+                keepalive: !isTelegramDesktop(), // на десктопе выключаем
+                mode: 'cors',
+                signal: controller.signal
+            }).catch(e => {
+                clearTimeout(timeout);
+                throw new Error(`Сеть/вебвью: ${e?.message || e}`);
+            });
+            clearTimeout(timeout);
+
+            let j;
+            try { j = await r.json(); }
+            catch (e) { throw new Error(`Ответ не JSON. HTTP ${r.status}.`); }
+
             if (!j.ok) {
                 const reason = (j.error && typeof j.error === 'string') ? j.error : JSON.stringify(j.error||j);
-                throw new Error(`imgbb: ${reason} (status ${j.status||'?'})`);
+                throw new Error(`imgbb: ${reason} (HTTP ${j.status||r.status||'?'})`);
             }
             return j.url;
         }
 
-        // 2.3 Обработчик выбора файлов
+        // Обработчик выбора файлов (+ретраи и пауза для Desktop)
         document.getElementById('hiddenFileInput').addEventListener('change', async (e) => {
             const files = [...e.target.files || []];
             if (files.length === 0) return;
@@ -421,18 +445,30 @@
                 const file = slice[i];
                 try {
                     const jpegBlob = await reencodeToJpegBlob(file);
-                    // ретраи на аплоад
                     let url, attempt = 0, lastErr = null;
                     while (attempt < 3) {
-                        try { url = await uploadToImgbbViaWorker(jpegBlob, file.name.replace(/\.[^.]+$/,'')); break; }
-                        catch (err) { lastErr = err; attempt++; console.log(`upload retry ${attempt}/3:`, err); await new Promise(r=>setTimeout(r, 700*attempt)); }
+                        try {
+                            url = await uploadToImgbbViaWorker(jpegBlob, file.name.replace(/\.[^.]+$/,''));
+                            break;
+                        } catch (err) {
+                            lastErr = err;
+                            attempt++;
+                            console.log(`upload retry ${attempt}/3:`, err);
+                            // на Desktop даём чуть больше паузу
+                            if (isTelegramDesktop()) {
+                              await new Promise(r => setTimeout(r, 400 + attempt * 200));
+                            } else {
+                              await new Promise(r => setTimeout(r, 200 + attempt * 150));
+                            }
+                        }
                     }
                     if (!url) throw lastErr || new Error('Не удалось загрузить на imgbb.');
                     selectedPhotos.push({ imageUrl: url });
                     console.log(`[upload ok] ${file.name} -> ${url}`);
                 } catch (err) {
+                    const offline = (navigator && navigator.onLine === false);
                     console.log(`[upload error] ${file.name}:`, err);
-                    alert(`Не удалось обработать/загрузить файл: ${file.name}\n${err?.message || err}`);
+                    alert(`Не удалось обработать/загрузить файл: ${file.name}\n${offline ? 'Похоже, нет интернета.' : (err?.message || err)}`);
                 }
             }
             updatePhotoCount();
@@ -475,7 +511,7 @@
             return j.result;
         }
 
-        // Собираем текст поста (сохраняю твою разметку и эмодзи)
+        // Собираем текст поста (как у тебя)
         function buildText() {
             const category = document.getElementById('category').value;
             const lake = document.getElementById('lake').value;
@@ -488,7 +524,7 @@
             const comment = document.getElementById('comment').value;
 
             const data =
-                `# ${category.toLowerCase()}_PP4Farm\n` +   // оставляю пробел после # как у тебя
+                `# ${category.toLowerCase()}_PP4Farm\n` +   // оставляю пробел после # как в твоём коде
                 `# ${lake}_PP4Farm 💥\n` +
                 `🐟 ${fish}\n` +
                 `📍 Координаты: ${coordinates}\n` +
@@ -535,9 +571,9 @@
             Telegram.WebApp.init();
         }
 
-        // Dev-лог в консоль (для разработки)
+        // Dev-лог в консоль (для разработки; пользователю не мешает)
         function logDev(...a){ try{ console.log('[miniapp]', ...a); }catch{} }
-        logDev('loaded');
+        logDev('loaded; desktop=', isTelegramDesktop());
     </script>
 </body>
 </html>
