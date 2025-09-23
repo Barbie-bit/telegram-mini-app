@@ -2,159 +2,146 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Russian Fishing — публикация по темам</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Russian Fishing — публикация в группы</title>
   <style>
-    :root { --bg:#0b1220; --card:#121a2b; --border:#1f2a44; --ink:#e6e8ec; --muted:#9aa7c7; --accent:#2a6df5; --input:#0e1627; }
-    *{box-sizing:border-box} body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
-    .wrap{max-width:820px;margin:0 auto;padding:20px} .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
-    h1{font-size:20px;margin:12px 0 16px} label{font-size:14px;opacity:.95}
-    textarea{width:100%;min-height:120px;border-radius:12px;border:1px solid var(--border);background:var(--input);color:var(--ink);padding:10px}
-    input[type=file]{width:100%;margin-top:8px} .btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);border:none;border-radius:12px;color:#fff;padding:12px 16px;font-weight:700;cursor:pointer}
-    .btn[disabled]{opacity:.55;cursor:not-allowed} .thumbs{display:grid;grid-template-columns:repeat(auto-fill,88px);gap:8px;margin-top:8px}
-    .thumbs img{width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--border)} .pill{display:inline-block;padding:6px 8px;border-radius:999px;border:1px solid var(--border);margin:6px 6px 0 0;background:#0b1324;color:var(--muted)}
-    .log{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;white-space:pre-wrap;background:var(--input);padding:10px;border-radius:10px;border:1px solid var(--border);max-height:260px;overflow:auto}
-    .hint{font-size:12px;color:var(--muted);margin-top:6px} .groups{display:grid;gap:6px;margin-top:8px} .group-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:#0b1220; color:#e6e8ec; }
+    .wrap { max-width: 780px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 20px; margin: 12px 0 16px; }
+    .card { background:#121a2b; border:1px solid #1f2a44; border-radius:16px; padding:16px; margin-bottom:16px; }
+    label { font-size:14px; opacity:.9; }
+    textarea { width:100%; min-height:120px; border-radius:12px; border:1px solid #213255; background:#0e1627; color:#e6e8ec; padding:10px; }
+    input[type=file] { width:100%; margin-top:8px; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .btn { display:inline-block; background:#2a6df5; border:none; border-radius:12px; color:#fff; padding:12px 16px; font-weight:700; cursor:pointer; }
+    .btn[disabled] { opacity:.5; cursor:not-allowed; }
+    .thumbs { display:grid; grid-template-columns:repeat(auto-fill,88px); gap:8px; margin-top:8px; }
+    .thumbs img { width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid #1f2a44; }
+    .log { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; white-space:pre-wrap; background:#0e1627; padding:10px; border-radius:10px; border:1px solid #1f2a44; max-height:220px; overflow:auto; }
+    .pill { display:inline-block; padding:6px 8px; border-radius:999px; border:1px solid #1f2a44; margin:2px 6px 2px 0; background:#0b1324; }
+    .groups { display:grid; gap:6px; margin-top:8px; }
+    .groups label { display:inline-flex; gap:8px; align-items:center; }
   </style>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <h1>Публикация отчёта и фото по темам</h1>
+  <div class="wrap">
+    <h1>Публикация отчёта и фото</h1>
 
-  <div class="card">
-    <div class="group-row">
-      <div>
-        <label>Юзернейм группы:</label><br>
-        <input id="username" value="PP4Farm" style="width:220px;border-radius:10px;border:1px solid var(--border);padding:6px;background:var(--input);color:var(--ink)">
-      </div>
-      <div>
-        <label>chat_id группы:</label><br>
-        <input id="chatId" placeholder="-100..." style="width:220px;border-radius:10px;border:1px solid var(--border);padding:6px;background:var(--input);color:var(--ink)">
-      </div>
-      <button class="btn" id="resolveIdBtn">🔎 Определить chat_id автоматически</button>
+    <div class="card">
+      <label>Текст публикации</label>
+      <textarea id="text" placeholder="Опишите улов, снасти, место и т. п."></textarea>
     </div>
-    <div class="hint">Введи <b>@username</b> и нажми «Определить chat_id», либо укажи <code>-100…</code> вручную. Бот должен быть в группе.</div>
-  </div>
 
-  <div class="card">
-    <label for="text">Текст публикации</label>
-    <textarea id="text" placeholder="Опишите улов, снасти, место и т. п."></textarea>
-  </div>
+    <div class="card">
+      <label>Фото (до 10 шт)</label>
+      <input id="files" type="file" accept="image/*" multiple />
+      <div class="thumbs" id="thumbs"></div>
+      <div id="count" class="pill">0 / 10</div>
+    </div>
 
-  <div class="card">
-    <label for="files">Фото (до 10 шт) — конвертируем в JPEG, макс 2000px</label>
-    <input id="files" type="file" accept="image/*" multiple />
-    <div class="thumbs" id="thumbs"></div>
-    <div id="count" class="pill">0 / 10</div>
-    <div class="hint">Если исходник HEIC/Live Photo — мы преобразуем в JPEG для совместимости.</div>
-  </div>
+    <div class="card">
+      <label>Куда отправлять (выберите водоёмы)</label>
+      <div class="groups" id="groupList">
+        <!-- Чекбоксы тем: названия + ссылки (ID темы извлекается из ссылки автоматически) -->
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/4"  /> Лосиное</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/3"  /> Комариное</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/5"  /> Вьюнок</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/7"  /> Белая</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/6"  /> Острог</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/8"  /> Куори</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/9"  /> Медвежье</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/10" /> Волхов</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/11" /> Донец</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/12" /> Сура</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/13" /> Ладожское</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/15" /> Архипелаг</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/14" /> Янтарное</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/16" /> Ахтуба</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/17" /> Медное</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/18" /> Тунгуска</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/19" /> Яма</label>
+        <label><input type="checkbox" class="group" value="https://t.me/PP4Farm/20" /> Норвежское море</label>
+      </div>
+    </div>
 
-  <div class="card">
-    <label>Темы</label>
-    <div class="groups" id="topics"></div>
-    <div class="hint">Пост уйдёт в каждую выбранную тему (одинаковый текст и альбом).</div>
-  </div>
+    <div class="card">
+      <button class="btn" id="sendBtn">Отправить</button>
+      <button class="btn" id="clearBtn" style="background:#263553">Очистить</button>
+    </div>
 
-  <div class="card">
-    <div class="row">
-      <button class="btn" id="sendBtn">🚀 Отправить</button>
-      <button class="btn" id="clearBtn" style="background:#263553">🧹 Очистить</button>
+    <div class="card">
+      <div class="log" id="log"></div>
     </div>
   </div>
-
-  <div class="card"><div class="log" id="log"></div></div>
-</div>
 
 <script>
 const WORKER_BASE = "https://rf-proxy.atvclub.workers.dev";
+const GROUP_USERNAME = "PP4Farm"; // одна супер-группа с темами
 const MAX_PHOTOS = 10;
 const MAX_PIXELS = 2000; // длинная сторона
 const JPEG_QUALITY = 0.85;
 
-// Твои темы: name -> link (последний сегмент = ID темы)
-const TOPIC_LINKS = {
-  "Лосиное": "https://t.me/PP4Farm/4",
-  "Комариное": "https://t.me/PP4Farm/3",
-  "Вьюнок": "https://t.me/PP4Farm/5",
-  "Белая": "https://t.me/PP4Farm/7",
-  "Острог": "https://t.me/PP4Farm/6",
-  "Куори": "https://t.me/PP4Farm/8",
-  "Медвежье": "https://t.me/PP4Farm/9",
-  "Волхов": "https://t.me/PP4Farm/10",
-  "Донец": "https://t.me/PP4Farm/11",
-  "Сура": "https://t.me/PP4Farm/12",
-  "Ладожское": "https://t.me/PP4Farm/13",
-  "Архипелаг": "https://t.me/PP4Farm/15",
-  "Янтарное": "https://t.me/PP4Farm/14",
-  "Ахтуба": "https://t.me/PP4Farm/16",
-  "Медное": "https://t.me/PP4Farm/17",
-  "Тунгуска": "https://t.me/PP4Farm/18",
-  "Яма": "https://t.me/PP4Farm/19",
-  "Норвежское море": "https://t.me/PP4Farm/20"
-};
+let GROUP_CHAT_ID = ""; // подтянем автоматически по username
 
-// DOM
-const elText = document.getElementById('text');
-const elFiles = document.getElementById('files');
+const elText   = document.getElementById('text');
+const elFiles  = document.getElementById('files');
 const elThumbs = document.getElementById('thumbs');
-const elCount = document.getElementById('count');
-const elSend = document.getElementById('sendBtn');
-const elClear = document.getElementById('clearBtn');
-const elLog = document.getElementById('log');
-const elTopics = document.getElementById('topics');
-const elUsername = document.getElementById('username');
-const elChatId = document.getElementById('chatId');
-const elResolve = document.getElementById('resolveIdBtn');
+const elCount  = document.getElementById('count');
+const elSend   = document.getElementById('sendBtn');
+const elClear  = document.getElementById('clearBtn');
+const elLog    = document.getElementById('log');
 
-function log(line){ elLog.textContent += `[${new Date().toLocaleTimeString()}] ${line}\n`; elLog.scrollTop = elLog.scrollHeight; }
-function alertT(msg){ if(window.Telegram?.WebApp) Telegram.WebApp.showAlert(msg); else alert(msg); }
-
-function buildTopics(){
-  elTopics.innerHTML = '';
-  Object.entries(TOPIC_LINKS).forEach(([name, link])=>{
-    const tid = parseInt((link.trim().split('/').pop()||'').replace(/\D+/g,''),10);
-    const idStr = Number.isFinite(tid) ? String(tid) : '';
-    const row = document.createElement('label');
-    row.innerHTML = `<input type="checkbox" class="topic" value="${idStr}"> ${name} <span class="pill">${idStr||'?'}</span>`;
-    elTopics.appendChild(row);
-  });
+function log(line) {
+  elLog.textContent += `[${new Date().toLocaleTimeString()}] ${line}\n`;
+  elLog.scrollTop = elLog.scrollHeight;
 }
-buildTopics();
+function alertT(msg){ if(window.Telegram?.WebApp){ Telegram.WebApp.showAlert(msg); } else { alert(msg); } }
 
-// preview
-elFiles.addEventListener('change', ()=>{
-  elThumbs.innerHTML='';
+function getSelectedTopicIds(){
+  const links = [...document.querySelectorAll('.group:checked')].map(x => x.value);
+  const ids = links.map(l => {
+    const seg = (l.trim().split('/').pop()||'').replace(/\D+/g,'');
+    const n = parseInt(seg,10);
+    return Number.isFinite(n) ? n : null;
+  }).filter(v => v !== null);
+  return ids;
+}
+
+// Preview
+elFiles.addEventListener('change', () => {
+  elThumbs.innerHTML = '';
   const files = [...elFiles.files].slice(0, MAX_PHOTOS);
-  files.forEach(f=>{ const img=document.createElement('img'); img.src=URL.createObjectURL(f); img.alt=f.name; elThumbs.appendChild(img); });
+  files.forEach(f => {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(f);
+    img.alt = f.name;
+    elThumbs.appendChild(img);
+  });
   elCount.textContent = `${files.length} / ${MAX_PHOTOS}`;
-  if (elFiles.files.length>MAX_PHOTOS) log(`Выбрано ${elFiles.files.length}, лишние будут проигнорированы.`);
+  if (elFiles.files.length > MAX_PHOTOS) {
+    log('Выбрано больше 10 файлов — лишние будут проигнорированы.');
+  }
 });
 
-// конвертация в JPEG + ресайз до 2000px
+// JPEG + ресайз (устраняет проблемы HEIC/больших фото)
 async function reencodeToJpeg(file){
-  // быстрая проверка веса — подсказка пользователю
-  if (file.size > 40 * 1024 * 1024) { // 40MB — выше лимита imgbb ~32MB
-    throw new Error(`Файл ${file.name} слишком большой (${(file.size/1024/1024).toFixed(1)}MB). Уменьшите фото.`);
+  if (file.size > 40 * 1024 * 1024) {
+    throw new Error(`Файл ${file.name} слишком большой: ${(file.size/1024/1024).toFixed(1)}MB. Уменьшите его.`);
   }
-
   const url = URL.createObjectURL(file);
   let bmp;
   try {
     bmp = await createImageBitmap(await fetch(url).then(r=>r.blob()));
   } catch {
-    // Если браузер не умеет декодировать (например HEIC) — дадим понятную ошибку
-    throw new Error(`Браузер не смог прочитать файл ${file.name}. Если это HEIC/Live Photo — откройте галерею и экспортируйте как JPEG/PNG.`);
+    throw new Error(`Не удалось прочитать ${file.name}. Если это HEIC/Live Photo — экспортируйте в JPEG/PNG.`);
   } finally {
     URL.revokeObjectURL(url);
   }
-
   const canvas = document.createElement('canvas');
   let { width, height } = bmp;
   const scale = Math.max(width, height) > MAX_PIXELS ? MAX_PIXELS / Math.max(width, height) : 1;
-  width = Math.round(width * scale);
-  height = Math.round(height * scale);
+  width = Math.round(width * scale); height = Math.round(height * scale);
   canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(bmp, 0, 0, width, height);
@@ -164,7 +151,8 @@ async function reencodeToJpeg(file){
 
 async function uploadToImgbb(base64, name){
   const r = await fetch(`${WORKER_BASE}/upload`, {
-    method:'POST', headers:{'content-type':'application/json'},
+    method: 'POST',
+    headers: { 'content-type':'application/json' },
     body: JSON.stringify({ imageBase64: base64, name })
   });
   const j = await r.json();
@@ -177,7 +165,8 @@ async function uploadToImgbb(base64, name){
 
 async function sendToTelegram(chat_id, text, mediaUrls, message_thread_id){
   const r = await fetch(`${WORKER_BASE}/send`, {
-    method:'POST', headers:{'content-type':'application/json'},
+    method:'POST',
+    headers:{'content-type':'application/json'},
     body: JSON.stringify({ chat_id, text, media: mediaUrls, message_thread_id })
   });
   const j = await r.json();
@@ -192,76 +181,81 @@ async function resolveChatId(username){
   return j.chat_id;
 }
 
-elResolve.addEventListener('click', async ()=>{
-  try{
-    elResolve.disabled=true;
-    const uname = elUsername.value.trim().replace(/^@/,'');
-    if(!uname) return alertT('Введите @username группы.');
-    log(`Определяю chat_id по @${uname}…`);
-    const cid = await resolveChatId(uname);
-    elChatId.value = String(cid);
-    log(`✓ Найден chat_id: ${cid}`);
-    alertT('chat_id заполнен.');
-  }catch(e){ console.error(e); alertT('Ошибка: '+(e?.message||e)); log('ОШИБКА: '+(e?.message||e)); }
-  finally{ elResolve.disabled=false; }
-});
+// Автоматически подтягиваем chat_id, не меняя UI
+(async function init() {
+  try {
+    if (window.Telegram?.WebApp) { Telegram.WebApp.expand(); Telegram.WebApp.ready(); }
+    log(`Определяю chat_id для @${GROUP_USERNAME}…`);
+    GROUP_CHAT_ID = String(await resolveChatId(GROUP_USERNAME));
+    log(`✓ chat_id: ${GROUP_CHAT_ID}`);
+  } catch (e) {
+    log('Не удалось определить chat_id автоматически. Убедись, что бот в группе и @username верный.');
+  }
+})();
 
-elSend.addEventListener('click', async ()=>{
-  try{
+elSend.addEventListener('click', async () => {
+  try {
     elSend.disabled = true;
 
-    const chat_id = elChatId.value.trim();
-    if (!chat_id) { alertT('Укажите chat_id группы.'); return; }
+    if (!GROUP_CHAT_ID) { alertT('Не удалось определить chat_id группы. Проверь, что бот добавлен в @PP4Farm.'); return; }
 
-    const text = elText.value.trim();
     const files = [...elFiles.files].slice(0, MAX_PHOTOS);
-    const topics = [...document.querySelectorAll('.topic:checked')].map(x=>parseInt(x.value,10)).filter(Number.isFinite);
+    const text  = elText.value.trim();
+    const topics = getSelectedTopicIds();
 
-    if (!text && files.length===0) { alertT('Добавьте текст или фото.'); return; }
-    if (topics.length===0) { alertT('Выберите хотя бы одну тему.'); return; }
+    if (!text && files.length === 0) { alertT('Добавьте текст или фото.'); return; }
+    if (topics.length === 0) { alertT('Выберите хотя бы один водоём (тему).'); return; }
 
-    log(`Старт: файлов ${files.length}, тем ${topics.length}, chat_id ${chat_id}`);
+    log(`Старт: файлов ${files.length}, тем ${topics.length}`);
 
-    const urls=[];
-    for(let i=0;i<files.length;i++){
-      const f=files[i];
+    const urls = [];
+    for (let i=0;i<files.length;i++){
+      const f = files[i];
       try {
         log(`Подготовка ${i+1}/${files.length}: ${f.name}`);
         const b64 = await reencodeToJpeg(f);
-        // ретраи на имгбб
+
+        // Ретраи на imgbb
         let url, attempt=0, lastErr=null;
         while(attempt<3){
           try { url = await uploadToImgbb(b64, f.name.replace(/\.[^.]+$/,'')); break; }
-          catch(err){ lastErr = err; attempt++; log(`imgbb retry ${attempt}/3 для ${f.name}: ${err.message||err}`); await new Promise(r=>setTimeout(r, 800*attempt)); }
+          catch(err){ lastErr=err; attempt++; log(`imgbb retry ${attempt}/3: ${err.message||err}`); await new Promise(r=>setTimeout(r, 800*attempt)); }
         }
         if(!url) throw lastErr || new Error('Не удалось загрузить на imgbb.');
         urls.push(url);
         log(`✓ URL: ${url}`);
-      } catch (e) {
+      } catch(e) {
         log(`ОШИБКА файла ${f.name}: ${e?.message||e}`);
         alertT(`Не удалось обработать/загрузить "${f.name}": ${e?.message||e}`);
-        return; // останавливаем, чтобы пользователь исправил
+        return;
       }
     }
 
-    for(const tid of topics){
+    for (const tid of topics) {
       log(`Отправка в тему #${tid}…`);
-      await sendToTelegram(chat_id, text, urls, tid);
+      await sendToTelegram(GROUP_CHAT_ID, text, urls, tid);
       log(`✓ Отправлено в тему #${tid}`);
     }
 
-    alertT('Публикация отправлена по выбранным темам!');
+    alertT('Публикация отправлена!');
     log('Готово ✔');
-  }catch(e){ console.error(e); alertT('Ошибка: '+(e?.message||e)); log('ОШИБКА: '+(e?.message||e)); }
-  finally{ elSend.disabled=false; }
+  } catch (e) {
+    console.error(e);
+    log('ОШИБКА: ' + (e?.message || e));
+    alertT('Ошибка: ' + (e?.message || e));
+  } finally {
+    elSend.disabled = false;
+  }
 });
 
-document.getElementById('clearBtn').addEventListener('click', ()=>{
-  elText.value=""; elFiles.value=""; elThumbs.innerHTML=""; elCount.textContent=`0 / ${MAX_PHOTOS}`;
-  elLog.textContent=""; [...document.querySelectorAll('.topic')].forEach(cb=>cb.checked=false);
+elClear.addEventListener('click', () => {
+  elText.value = "";
+  elFiles.value = "";
+  elThumbs.innerHTML = "";
+  elCount.textContent = `0 / ${MAX_PHOTOS}`;
+  elLog.textContent = "";
+  [...document.querySelectorAll('.group')].forEach(cb => { cb.checked = false; });
 });
-
-(function initTWA(){ if(window.Telegram?.WebApp){ Telegram.WebApp.expand(); Telegram.WebApp.ready(); } })();
 </script>
 </body>
 </html>
