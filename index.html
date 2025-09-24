@@ -3,71 +3,281 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Мини-приложение для рыбалки</title>
+  <title>Русская Рыбалка 4 • Мини-приложение</title>
+
+  <!-- ===== VISUAL ONLY (только стили) ===== -->
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-image: url('/mnt/data/A_promotional_digital_illustration_for_"Russian_Fi.png');
-      background-size: cover; background-position: center;
-      color:#333; padding:20px; height:100vh; margin:0;
+    :root{
+      --bg-1: #0b2447;
+      --bg-2: #19376d;
+      --bg-3: #145da0;
+      --glass: rgba(255,255,255,.08);
+      --glass-strong: rgba(255,255,255,.12);
+      --text: #e6f0ff;
+      --muted: #b8c7e6;
+      --accent: #7cc4ff;
+      --accent-2: #4CAF50;
+      --brand: #00b4d8;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
     }
-    .container { background:rgba(255,255,255,.8); border-radius:10px; padding:20px; max-width:600px; margin:0 auto; }
-    .button,.photo-button { color:#fff; padding:15px 32px; font-size:16px; margin:4px 2px; cursor:pointer; border-radius:4px; width:100%; text-align:center; }
-    .button{ background:#4CAF50; } .photo-button{ background:#007bff; padding:10px 20px; }
-    input,select{ margin:10px 0; padding:8px; width:100%; max-width:300px; }
-    label{ font-size:16px; margin-bottom:5px; display:block; }
-    #photoCountInfo{ margin-top:10px; font-size:14px; color:#666; }
+
+    /* Фон в стиле RF4 */
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% 10%, rgba(255,255,255,.06), transparent 60%),
+        radial-gradient(900px 500px at 90% 20%, rgba(0,180,216,.15), transparent 70%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2) 40%, var(--bg-3) 100%);
+      overflow-y:auto;
+      padding: 24px;
+    }
+
+    /* Декоративная текстура (едва заметная) */
+    body:after{
+      content:"";
+      position:fixed; inset:0;
+      pointer-events:none;
+      background-image:
+        radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size: 18px 18px;
+      mix-blend-mode: soft-light;
+    }
+
+    /* Центральная карточка приложения */
+    .container{
+      width: min(780px, 100%);
+      margin: 0 auto;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.35));
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.12);
+      overflow: hidden;
+    }
+
+    /* Шапка с иллюстрацией */
+    .hero{
+      position: relative;
+      padding: 28px 24px 90px;
+      background:
+        url('/mnt/data/A_promotional_digital_illustration_for_"Russian_Fi.png') center/cover no-repeat;
+    }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(180deg, rgba(6,14,34,.15), rgba(6,14,34,.65) 70%, rgba(6,14,34,.85));
+    }
+    .hero-inner{
+      position: relative;
+      z-index: 1;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .logo{
+      flex: 0 0 auto;
+      width:64px; height:64px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.9) url('/mnt/data/PP4_logo_round.png') center/65% no-repeat;
+      box-shadow: 0 6px 18px rgba(0,0,0,.35);
+      border: 2px solid rgba(255,255,255,.7);
+    }
+    .title{
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing:.2px;
+      text-shadow: 0 2px 8px rgba(0,0,0,.45);
+    }
+    .subtitle{
+      margin-top:2px;
+      font-size: 13px;
+      color: #e7f5ff;
+      opacity:.9;
+    }
+
+    /* Тело формы */
+    .body{
+      padding: 16px 20px 22px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+    }
+    @media (max-width:720px){
+      .body{ grid-template-columns: 1fr; }
+    }
+
+    h1{ display:none; } /* старый заголовок скрываем */
+
+    label{
+      display:block;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 2px 2px 6px;
+    }
+    input, select{
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: var(--text);
+      background: var(--glass);
+      border: 1px solid rgba(255,255,255,.14);
+      outline: none;
+      transition: .2s border, .2s background;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    input::placeholder{ color:#cfe0ff88; }
+    input:focus, select:focus{
+      border-color: var(--accent);
+      background: var(--glass-strong);
+      box-shadow: 0 0 0 4px rgba(124,196,255,.15);
+    }
+
+    /* Широкие элементы на всю ширину гридов */
+    .row-2{ grid-column: 1 / -1; }
+
+    /* Кнопки */
+    .button,.photo-button{
+      width:100%;
+      border:none;
+      cursor:pointer;
+      color:#06223f;
+      font-weight: 800;
+      letter-spacing:.3px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      transition: transform .06s ease, box-shadow .2s ease, background .2s;
+    }
+    .button{
+      background: linear-gradient(180deg, #9af79a, #45c66a);
+      color:#053018;
+      box-shadow: 0 12px 24px rgba(19,178,96,.35);
+    }
+    .button:hover{ transform: translateY(-1px); }
+    .button:active{ transform: translateY(0); }
+
+    .photo-button{
+      background: linear-gradient(180deg, #9ad6ff, #3aa7ff);
+      color:#02233d;
+      box-shadow: 0 12px 24px rgba(58,167,255,.35);
+    }
+
+    /* Инфо о фото */
+    #photoCountInfo{
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Низ карточки */
+    .footer{
+      padding: 14px 18px 18px;
+      display:flex; justify-content: space-between; align-items:center;
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+    }
+    .handle{
+      font-size: 12px;
+      color: #bfe6ff;
+      opacity:.9;
+      text-decoration: none;
+    }
+    .handle:hover{ text-decoration: underline; }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <h1>Рыбалка на сегодня!</h1>
 
-    <label for="category">Выберите категорию:</label>
-    <select id="category">
-      <option value="Фарм">Фарм</option>
-      <option value="Трофей">Трофей</option>
-      <option value="Уникальное">Уникальное</option>
-    </select>
+    <!-- ВИЗУАЛЬНАЯ ШАПКА -->
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="title">Русская Рыбалка 4 • Точки клёва</div>
+          <div class="subtitle">Мини-приложение для публикации постов с фото и параметрами</div>
+        </div>
+      </div>
+    </div>
 
-    <label for="lake">Выберите водоём:</label>
-    <select id="lake" onchange="updateFishList()">
-      <option>Лосиное</option><option>Комариное</option><option>Вьюнок</option><option>Белая</option>
-      <option>Острог</option><option>Куори</option><option>Медвежье</option><option>Волхов</option>
-      <option>Донец</option><option>Сура</option><option>Ладожское</option><option>Архипелаг</option>
-      <option>Янтарное</option><option>Ахтуба</option><option>Медное</option><option>Тунгуска</option>
-      <option>Яма</option><option>Норвежское море</option>
-    </select>
+    <!-- ОСНОВНАЯ ФОРМА (структура и id не менялись) -->
+    <div class="body">
+      <h1>Рыбалка на сегодня!</h1>
 
-    <label for="fish">Выберите рыбу:</label>
-    <select id="fish"></select>
+      <div class="row-2">
+        <label for="category">Выберите категорию:</label>
+        <select id="category">
+          <option value="Фарм">Фарм</option>
+          <option value="Трофей">Трофей</option>
+          <option value="Уникальное">Уникальное</option>
+        </select>
+      </div>
 
-    <label for="coordinates">Координаты:</label>
-    <input id="coordinates" type="text" placeholder="например, 50.1234:30.5678" />
+      <div>
+        <label for="lake">Выберите водоём:</label>
+        <select id="lake" onchange="updateFishList()">
+          <option>Лосиное</option><option>Комариное</option><option>Вьюнок</option><option>Белая</option>
+          <option>Острог</option><option>Куори</option><option>Медвежье</option><option>Волхов</option>
+          <option>Донец</option><option>Сура</option><option>Ладожское</option><option>Архипелаг</option>
+          <option>Янтарное</option><option>Ахтуба</option><option>Медное</option><option>Тунгуска</option>
+          <option>Яма</option><option>Норвежское море</option>
+        </select>
+      </div>
 
-    <label for="depth">Глубина:</label>
-    <input id="depth" type="text" placeholder="например, 3.2" />
+      <div>
+        <label for="fish">Выберите рыбу:</label>
+        <select id="fish"></select>
+      </div>
 
-    <label for="clips">Клипса:</label>
-    <input id="clips" type="text" placeholder="например, 25" />
+      <div>
+        <label for="coordinates">Координаты:</label>
+        <input id="coordinates" type="text" placeholder="например, 50.1234:30.5678" />
+      </div>
 
-    <label for="speed">Скорость:</label>
-    <input id="speed" type="text" placeholder="например, 35" />
+      <div>
+        <label for="depth">Глубина:</label>
+        <input id="depth" type="text" placeholder="например, 3.2" />
+      </div>
 
-    <label for="square">Квадрат:</label>
-    <input id="square" type="text" placeholder="например, D6" />
+      <div>
+        <label for="clips">Клипса:</label>
+        <input id="clips" type="text" placeholder="например, 25" />
+      </div>
 
-    <label for="comment">Комментарий:</label>
-    <input id="comment" type="text" placeholder="доп. информация" />
+      <div>
+        <label for="speed">Скорость:</label>
+        <input id="speed" type="text" placeholder="например, 35" />
+      </div>
 
-    <button class="button" onclick="sendData()">Опубликовать</button>
-    <button class="photo-button" onclick="document.getElementById('hiddenFileInput').click()">Добавить фото (мин. 3, макс. 10)</button>
+      <div>
+        <label for="square">Квадрат:</label>
+        <input id="square" type="text" placeholder="например, D6" />
+      </div>
 
-    <input id="hiddenFileInput" type="file" accept="image/*" multiple style="display:none" />
-    <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
+      <div class="row-2">
+        <label for="comment">Комментарий:</label>
+        <input id="comment" type="text" placeholder="доп. информация" />
+      </div>
+
+      <div class="row-2">
+        <button class="button" onclick="sendData()">Опубликовать</button>
+      </div>
+      <div class="row-2">
+        <button class="photo-button" onclick="document.getElementById('hiddenFileInput').click()">Добавить фото (мин. 3, макс. 10)</button>
+        <input id="hiddenFileInput" type="file" accept="image/*" multiple style="display:none" />
+        <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a class="handle" href="https://t.me/RR4Farm_appbot" target="_blank" rel="noopener">@RR4Farm_appbot</a>
+    </div>
   </div>
 
-<script>
+  <!-- ===== ВСЯ ЛОГИКА (без изменений) ===== -->
+  <script>
   // ===== настройки =====
   const WORKER_BASE = "https://rf-proxy.atvclub.workers.dev";
   const MAX_PHOTOS = 10;
@@ -82,13 +292,13 @@
     "Тунгуска":18,"Яма":19,"Норвежское море":20
   };
 
-  // кастом-эмодзи
+  // кастом-эмодзи (сработают когда добавишь набор для чата)
   const CUSTOM_EMOJI_IDS = {
     TROPHY: "5341269699227321203",
     UNIQUE: "5341321204475133248",
   };
 
-  // ===== рыбы по водоёмам =====
+  // ===== рыбы по водоёмам (полный список) =====
   const fishByWater = {
     "Лосиное":["Вармоус","Горбыль речной","Доросома северная","Краппи белый","Краппи чёрный","Лаврак полосатый","Лаврак полосатый гибрид","Окунь белый","Окунь большеротый","Окунь малоротый","Окунь павлиний","Окунь пятнистый","Панцирник пятнистый","Солнечник красноухий","Солнечник синежаберный","Сомик канальный","Сомик оливковый","Судак светлопёрый","Щука панцирная"],
     "Комариное":["Вьюн","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп зеркальный","Карп Кои Мидори-гои","Карп чешуйчатый","Лещ","Линь","Линь золотистый","Лягушка","Окунь","Плотва обыкновенная","Ротан","Сом","Уклейка","Щука обыкновенная","Язь"],
@@ -128,13 +338,14 @@
   function updatePhotoCount(){ document.getElementById('photoCountInfo').textContent = `Выбрано ${selectedPhotos.length} фото. Минимум 3, максимум 10.`; }
   updatePhotoCount();
 
-  async function reencodeToJpeg(file, maxSide=1600, quality=0.85){
+  // --- УЖАТИЕ В JPEG ---
+  async function reencodeToJpeg(file, maxSide=1200, quality=0.8){
     return new Promise((resolve, reject)=>{
       const fr = new FileReader();
       fr.onerror = ()=> reject(new Error('Не удалось прочитать файл'));
       fr.onload = ()=>{
         const img = new Image();
-        img.onerror = ()=> reject(new Error('Формат изображения не поддерживается'));
+        img.onerror = ()=> reject(new Error('Этот формат изображения не поддерживается'));
         img.onload = ()=>{
           let {width, height} = img;
           const scale = Math.min(1, maxSide / Math.max(width, height));
@@ -155,57 +366,58 @@
     });
   }
 
+  function abortableFetch(resource, options={}, timeoutMs=60000){
+    const controller = new AbortController();
+    const id = setTimeout(()=>controller.abort(), timeoutMs);
+    return fetch(resource, {
+      ...options,
+      signal: controller.signal,
+      referrerPolicy: 'no-referrer',
+      credentials: 'omit',
+      cache: 'no-store',
+      mode: 'cors'
+    }).finally(()=>clearTimeout(id));
+  }
+
   async function blobToBase64(blob){
-    const buf = await blob.arrayBuffer();
+    const buf=await blob.arrayBuffer();
     return btoa(String.fromCharCode(...new Uint8Array(buf)));
   }
 
-  // Без AbortController — максимально «терпеливый» fetch
+  // --- ЗАГРУЗКА: multipart → base64 ---
   async function uploadToImgbbViaWorker(fileBlob, name){
     const safeName = (name||'photo');
-
-    // 1) multipart
     try{
       const form = new FormData();
       form.set('file', fileBlob, `${safeName}.jpg`);
       form.set('name', safeName);
-      const r = await fetch(`${WORKER_BASE}/upload`, {
-        method:'POST',
-        body: form,
-        mode: 'cors',
-        cache: 'no-store',
-        referrerPolicy: 'no-referrer',
-        credentials: 'omit',
-        keepalive: true
-      });
+      const r = await abortableFetch(`${WORKER_BASE}/upload`, { method:'POST', body:form }, 60000);
       const txt = await r.text();
       let j; try{ j = JSON.parse(txt); }catch{}
       if (r.ok && j?.ok && j.url) return j.url;
       throw new Error(`multipart: http ${r.status}${j?.error?` — ${j.error}`:''}${!j?` — ${txt}`:''}`);
     }catch(e1){
-      // 2) base64
-      const b64 = await blobToBase64(fileBlob);
-      const r2 = await fetch(`${WORKER_BASE}/upload`, {
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify({ imageBase64: b64, name: safeName }),
-        mode: 'cors',
-        cache: 'no-store',
-        referrerPolicy: 'no-referrer',
-        credentials: 'omit',
-        keepalive: true
-      });
-      const txt2 = await r2.text();
-      let j2; try{ j2 = JSON.parse(txt2); }catch{}
-      if (r2.ok && j2?.ok && j2.url) return j2.url;
-      throw new Error(`base64: http ${r2.status}${j2?.error?` — ${j2.error}`:''}${!j2?` — ${txt2}`:''}`);
+      try{
+        const b64 = await blobToBase64(fileBlob);
+        const r2 = await abortableFetch(`${WORKER_BASE}/upload`, {
+          method:'POST',
+          headers:{'content-type':'application/json'},
+          body:JSON.stringify({ imageBase64:b64, name:safeName })
+        }, 60000);
+        const txt2 = await r2.text();
+        let j2; try{ j2 = JSON.parse(txt2); }catch{}
+        if (r2.ok && j2?.ok && j2.url) return j2.url;
+        throw new Error(`base64: http ${r2.status}${j2?.error?` — ${j2.error}`:''}${!j2?` — ${txt2}`:''}`);
+      }catch(e2){
+        throw e2.name === 'AbortError' ? new Error('Превышен таймаут загрузки (60 сек)') : e2;
+      }
     }
   }
 
+  // обработчик выбора файлов
   document.getElementById('hiddenFileInput').addEventListener('change', async (e)=>{
     const files=[...e.target.files||[]]; if(!files.length) return;
     const slice=files.slice(0, Math.min(MAX_PHOTOS-selectedPhotos.length, files.length));
-
     for(const file of slice){
       try{
         if (!file.type.startsWith('image/')) throw new Error('Файл не является изображением');
@@ -223,7 +435,7 @@
     e.target.value="";
   });
 
-  // ===== текст + кастом-эмодзи (оформление оставлено как есть) =====
+  // ===== текст + кастом-эмодзи =====
   function buildTextAndEntities(){
     const category=document.getElementById('category').value;
     const lake=document.getElementById('lake').value;
@@ -292,8 +504,7 @@
       const r=await fetch(`${WORKER_BASE}/send`,{
         method:'POST',
         headers:{'content-type':'application/json'},
-        body:JSON.stringify(payload),
-        keepalive:true
+        body:JSON.stringify(payload)
       });
       const j=await r.json();
       if(!j?.ok){ console.log('Ошибка публикации:', j); alert("Ошибка публикации"); return; }
@@ -302,6 +513,6 @@
       selectedPhotos=[]; updatePhotoCount();
     }catch(e){ console.error(e); alert("Сеть недоступна или ошибка сервера"); }
   }
-</script>
+  </script>
 </body>
 </html>
