@@ -12,11 +12,13 @@
       color:#333; padding:20px; height:100vh; margin:0;
     }
     .container { background:rgba(255,255,255,.8); border-radius:10px; padding:20px; max-width:600px; margin:0 auto; }
-    .button,.photo-button { color:#fff; padding:15px 32px; font-size:16px; margin:4px 2px; cursor:pointer; border-radius:4px; width:100%; text-align:center; }
+    .button,.photo-button { color:#fff; padding:15px 32px; font-size:16px; margin:4px 2px; cursor:pointer; border-radius:4px; width:100%; text-align:center; display:inline-block; text-decoration:none; }
     .button{ background:#4CAF50; } .photo-button{ background:#007bff; padding:10px 20px; }
     input,select{ margin:10px 0; padding:8px; width:100%; max-width:300px; }
     label{ font-size:16px; margin-bottom:5px; display:block; }
     #photoCountInfo{ margin-top:10px; font-size:14px; color:#666; }
+    /* инпут файла должен быть «невидим», но НЕ display:none */
+    .file-input-ghost{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
   </style>
 </head>
 <body>
@@ -61,9 +63,11 @@
     <input id="comment" type="text" placeholder="доп. информация" />
 
     <button class="button" onclick="sendData()">Опубликовать</button>
-    <button class="photo-button" onclick="document.getElementById('hiddenFileInput').click()">Добавить фото (мин. 3, макс. 10)</button>
 
-    <input id="hiddenFileInput" type="file" accept="image/*" multiple style="display:none" />
+    <!-- заменили кнопку на label, чтобы ПК десктоп не блокировал выбор файлов -->
+    <label class="photo-button" for="fileInput">Добавить фото (мин. 3, макс. 10)</label>
+    <input id="fileInput" type="file" accept="image/*" multiple class="file-input-ghost" />
+
     <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
   </div>
 
@@ -144,7 +148,8 @@
     }
   }
 
-  document.getElementById('hiddenFileInput').addEventListener('change', async (e)=>{
+  // слушаем НЕ скрытый display:none, а «призрачный» инпут, на который кликает label
+  document.getElementById('fileInput').addEventListener('change', async (e)=>{
     const files=[...e.target.files||[]]; if(!files.length) return;
     const slice=files.slice(0, Math.min(MAX_PHOTOS-selectedPhotos.length, files.length));
     for(const file of slice){
@@ -156,56 +161,55 @@
 
   // ===== текст + кастом-эмодзи =====
   function buildTextAndEntities(){
-  const category=document.getElementById('category').value;
-  const lake=document.getElementById('lake').value;
-  const fish=(document.getElementById('fish').value||"").trim();
+    const category=document.getElementById('category').value;
+    const lake=document.getElementById('lake').value;
+    const fish=(document.getElementById('fish').value||"").trim();
 
-  const coordinates=document.getElementById('coordinates').value.trim();
-  const depth=document.getElementById('depth').value.trim();
-  const clips=document.getElementById('clips').value.trim();
-  const speed=document.getElementById('speed').value.trim();
-  const square=document.getElementById('square').value.trim();
-  const comment=document.getElementById('comment').value.trim();
+    const coordinates=document.getElementById('coordinates').value.trim();
+    const depth=document.getElementById('depth').value.trim();
+    const clips=document.getElementById('clips').value.trim();
+    const speed=document.getElementById('speed').value.trim();
+    const square=document.getElementById('square').value.trim();
+    const comment=document.getElementById('comment').value.trim();
 
-  // две строки-хэштегов + пустая строка (как на скрине)
-  const head=[`# ${category.toLowerCase()}_PP4Farm`, `# ${lake}_PP4Farm`, ''];
+    // две строки-хэштегов + пустая строка (как на скрине)
+    const head=[`# ${category.toLowerCase()}_PP4Farm`, `# ${lake}_PP4Farm`, ''];
 
-  // строка с рыбой + тут же наш кастом-эмодзи
-  let fishLine = "";
-  let emojiChar = "";           // базовый символ, на который "натянем" кастом-эмодзи
-  let customId  = null;
+    // строка с рыбой + наш кастом-эмодзи
+    let fishLine = "";
+    let emojiChar = "";           // базовый символ, на который "натянем" кастом-эмодзи
+    let customId  = null;
 
-  if (fish){
-    if (category === 'Трофей') { emojiChar = '💥'; customId = "5341269699227321203"; }
-    if (category === 'Уникальное') { emojiChar = '🌸'; customId = "5341321204475133248"; }
-    fishLine = `🐟 ${fish}${customId ? ' ' + emojiChar : ''}`;
-  }
-
-  const details=[];
-  if (coordinates) details.push(`📍 Координаты: ${coordinates}`);
-  if (clips)       details.push(`🎣 Клипса: ${clips}`);
-  if (depth)       details.push(`🎣 Глубина: ${depth}`);
-  if (speed)       details.push(`⋙ Скорость: ${speed}`);
-  if (square)      details.push(`🗺 Квадрат: ${square}`);
-  if (comment)     details.push(`💬 Комментарий: ${comment}`);
-
-  const parts=[...head];
-  if (fishLine) parts.push(fishLine);
-  if (details.length) parts.push(...details);
-
-  let text = parts.join('\n').replace(/\n{3,}/g,'\n\n').trim();
-
-  // помечаем именно наш emojiChar как custom_emoji
-  const entities=[];
-  if (customId){
-    const idx = text.lastIndexOf(emojiChar); // он один в строке рыбы
-    if (idx >= 0){
-      entities.push({ type:'custom_emoji', offset: idx, length: emojiChar.length, custom_emoji_id: customId });
+    if (fish){
+      if (category === 'Трофей') { emojiChar = '💥'; customId = "5341269699227321203"; }
+      if (category === 'Уникальное') { emojiChar = '🌸'; customId = "5341321204475133248"; }
+      fishLine = `🐟 ${fish}${customId ? ' ' + emojiChar : ''}`;
     }
-  }
-  return { text, entities: entities.length ? entities : undefined };
-}
 
+    const details=[];
+    if (coordinates) details.push(`📍 Координаты: ${coordinates}`);
+    if (clips)       details.push(`🎣 Клипса: ${clips}`);
+    if (depth)       details.push(`🎣 Глубина: ${depth}`);
+    if (speed)       details.push(`⋙ Скорость: ${speed}`);
+    if (square)      details.push(`🗺 Квадрат: ${square}`);
+    if (comment)     details.push(`💬 Комментарий: ${comment}`);
+
+    const parts=[...head];
+    if (fishLine) parts.push(fishLine);
+    if (details.length) parts.push(...details);
+
+    let text = parts.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+
+    // помечаем именно наш emojiChar как custom_emoji
+    const entities=[];
+    if (customId){
+      const idx = text.lastIndexOf(emojiChar); // он один в строке рыбы
+      if (idx >= 0){
+        entities.push({ type:'custom_emoji', offset: idx, length: emojiChar.length, custom_emoji_id: customId });
+      }
+    }
+    return { text, entities: entities.length ? entities : undefined };
+  }
 
   // ===== отправка =====
   async function sendData(){
