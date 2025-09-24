@@ -13,10 +13,12 @@
     }
     .container { background:rgba(255,255,255,.8); border-radius:10px; padding:20px; max-width:600px; margin:0 auto; }
     .button,.photo-button { color:#fff; padding:15px 32px; font-size:16px; margin:4px 2px; cursor:pointer; border-radius:4px; width:100%; text-align:center; }
-    .button{ background:#4CAF50; } .photo-button{ background:#007bff; padding:10px 20px; }
+    .button{ background:#4CAF50; }
+    .photo-button{ background:#007bff; padding:10px 20px; }
     input,select{ margin:10px 0; padding:8px; width:100%; max-width:300px; }
     label{ font-size:16px; margin-bottom:5px; display:block; }
     #photoCountInfo{ margin-top:10px; font-size:14px; color:#666; }
+    #openBrowserBtn { background:#6c757d; }
   </style>
 </head>
 <body>
@@ -62,13 +64,14 @@
 
     <button class="button" onclick="sendData()">Опубликовать</button>
     <button class="photo-button" onclick="document.getElementById('hiddenFileInput').click()">Добавить фото (мин. 3, макс. 10)</button>
+    <button id="openBrowserBtn" class="photo-button" style="display:none;">Открыть в браузере</button>
 
     <input id="hiddenFileInput" type="file" accept="image/*" multiple style="display:none" />
     <div id="photoCountInfo">Выбрано 0 фото. Минимум 3, максимум 10.</div>
   </div>
 
 <script>
-  // ===== НАСТРОЙКИ =====
+  // ===== настройки =====
   const WORKER_BASE = "https://rf-proxy.atvclub.workers.dev";
   const MAX_PHOTOS = 10;
   const CHAT_ID = -1002823326154;
@@ -84,7 +87,7 @@
     UNIQUE: "5341321204475133248",
   };
 
-  // ===== СПИСКИ РЫБ (как у вас) =====
+  // ===== рыбы по водоёмам =====
   const fishByWater = {
     "Лосиное":["Вармоус","Горбыль речной","Доросома северная","Краппи белый","Краппи чёрный","Лаврак полосатый","Лаврак полосатый гибрид","Окунь белый","Окунь большеротый","Окунь малоротый","Окунь павлиний","Окунь пятнистый","Панцирник пятнистый","Солнечник красноухий","Солнечник синежаберный","Сомик канальный","Сомик оливковый","Судак светлопёрый","Щука панцирная"],
     "Комариное":["Вьюн","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп зеркальный","Карп Кои Мидори-гои","Карп чешуйчатый","Лещ","Линь","Линь золотистый","Лягушка","Окунь","Плотва обыкновенная","Ротан","Сом","Уклейка","Щука обыкновенная","Язь"],
@@ -111,112 +114,71 @@
     const fishList = fishByWater[lake] || [];
     const sel = document.getElementById('fish');
     sel.innerHTML = '';
-    if (fishList.length === 0){
-      const o=document.createElement('option'); o.value=''; o.textContent='Не выбрано'; sel.appendChild(o);
-    } else {
-      fishList.forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; sel.appendChild(o); });
-    }
+    fishList.forEach(f=>{
+      const o=document.createElement('option'); o.value=f; o.textContent=f; sel.appendChild(o);
+    });
   }
   updateFishList();
 
-  // ===== ФОТО =====
+  // ===== фото =====
   let selectedPhotos = [];
   function updatePhotoCount(){
     document.getElementById('photoCountInfo').textContent =
       `Выбрано ${selectedPhotos.length} фото. Минимум 3, максимум 10.`;
   }
-  updatePhotoCount();
 
-  // перекодируем в JPEG (до 1200px) — повышает совместимость на ПК
   async function reencodeToJpeg(file, maxSide=1200, quality=0.8){
     return new Promise((resolve, reject)=>{
-      const fr = new FileReader();
-      fr.onerror = ()=> reject(new Error('Не удалось прочитать файл'));
-      fr.onload = ()=>{
-        const img = new Image();
-        img.onerror = ()=> reject(new Error('Формат изображения не поддерживается'));
-        img.onload = ()=>{
-          let {width, height} = img;
-          const scale = Math.min(1, maxSide / Math.max(width, height));
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-          const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob)=>{
-            if (!blob) return reject(new Error('Не удалось перекодировать изображение'));
-            resolve(blob);
-          }, 'image/jpeg', quality);
+      const fr=new FileReader();
+      fr.onerror=()=>reject(new Error('Не удалось прочитать файл'));
+      fr.onload=()=>{
+        const img=new Image();
+        img.onerror=()=>reject(new Error('Формат не поддерживается'));
+        img.onload=()=>{
+          let {width,height}=img;
+          const scale=Math.min(1,maxSide/Math.max(width,height));
+          width=Math.round(width*scale); height=Math.round(height*scale);
+          const canvas=document.createElement('canvas');
+          canvas.width=width; canvas.height=height;
+          canvas.getContext('2d').drawImage(img,0,0,width,height);
+          canvas.toBlob(b=> b?resolve(b):reject(new Error('Ошибка перекодировки')),'image/jpeg',quality);
         };
-        img.src = fr.result;
+        img.src=fr.result;
       };
       fr.readAsDataURL(file);
     });
   }
 
-  async function blobToBase64(blob){
-    const buf = await blob.arrayBuffer();
-    let binary = "";
-    const bytes = new Uint8Array(buf);
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-    }
-    return btoa(binary);
-  }
-
-  // только JSON/base64 к воркеру (+таймаут)
   async function uploadToImgbbViaWorker(fileBlob, name){
-    const b64 = await blobToBase64(fileBlob);
-    const controller = new AbortController();
-    const timer = setTimeout(()=>controller.abort(), 30000); // 30s
-
-    try{
-      const r = await fetch(`${WORKER_BASE}/upload`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ imageBase64: b64, name: (name || 'photo') }),
-        signal: controller.signal,
-        mode: 'cors',
-        cache: 'no-store',
-        credentials: 'omit'
-      });
-      const j = await r.json();
-      if (j?.ok && j.url) return j.url;
-      throw new Error(j?.error || 'upload failed');
-    } finally {
-      clearTimeout(timer);
-    }
+    const form=new FormData();
+    form.set('file', fileBlob, `${name}.jpg`);
+    form.set('name', name);
+    const r=await fetch(`${WORKER_BASE}/upload`,{method:'POST',body:form});
+    const j=await r.json();
+    if(j?.ok && j.url) return j.url;
+    throw new Error('Ошибка загрузки');
   }
 
   document.getElementById('hiddenFileInput').addEventListener('change', async (e)=>{
-    const files=[...e.target.files||[]]; if(!files.length) return;
+    const files=[...e.target.files||[]];
     const slice=files.slice(0, Math.min(MAX_PHOTOS-selectedPhotos.length, files.length));
-
     for(const file of slice){
       try{
-        if (!file.type.startsWith('image/')) throw new Error('Файл не является изображением');
-        const jpegBlob = await reencodeToJpeg(file);                   // перекод
-        const baseName = (file.name||'photo').replace(/\.[^.]+$/,'');  // имя
-        const url = await uploadToImgbbViaWorker(jpegBlob, baseName);  // аплоад
+        const jpegBlob=await reencodeToJpeg(file);
+        const baseName=(file.name||'photo').replace(/\.[^.]+$/,'');
+        const url=await uploadToImgbbViaWorker(jpegBlob,baseName);
         selectedPhotos.push({imageUrl:url});
-      }catch(err){
-        const reason = (err && (err.message||String(err))) || 'Неизвестная ошибка';
-        alert(`Не удалось загрузить файл: ${file.name}\nПричина: ${reason}`);
-        console.error('upload error:', err);
-      }
+      }catch(err){ alert(`Не удалось загрузить файл: ${file.name}`); }
     }
     updatePhotoCount();
     e.target.value="";
   });
 
-  // ===== ТЕКСТ + КАСТОМ-ЭМОДЗИ (как было) =====
+  // ===== текст + эмодзи =====
   function buildTextAndEntities(){
     const category=document.getElementById('category').value;
     const lake=document.getElementById('lake').value;
     const fish=(document.getElementById('fish').value||"").trim();
-
     const coordinates=document.getElementById('coordinates').value.trim();
     const depth=document.getElementById('depth').value.trim();
     const clips=document.getElementById('clips').value.trim();
@@ -225,69 +187,51 @@
     const comment=document.getElementById('comment').value.trim();
 
     const head=[`# ${category.toLowerCase()}_PP4Farm`, `# ${lake}_PP4Farm`, ''];
-
-    let fishLine = "";
-    let emojiChar = "";
-    let customId  = null;
-
-    if (fish){
-      if (category === 'Трофей') { emojiChar = '💥'; customId = CUSTOM_EMOJI_IDS.TROPHY; }
-      if (category === 'Уникальное') { emojiChar = '🌸'; customId = CUSTOM_EMOJI_IDS.UNIQUE; }
-      fishLine = `🐟 ${fish}${customId ? ' ' + emojiChar : ''}`;
+    let fishLine=""; let emojiChar=""; let customId=null;
+    if(fish){
+      if(category==='Трофей'){emojiChar='💥'; customId=CUSTOM_EMOJI_IDS.TROPHY;}
+      if(category==='Уникальное'){emojiChar='🌸'; customId=CUSTOM_EMOJI_IDS.UNIQUE;}
+      fishLine=`🐟 ${fish}${customId?' '+emojiChar:''}`;
     }
-
     const details=[];
-    if (coordinates) details.push(`📍 Координаты: ${coordinates}`);
-    if (clips)       details.push(`🎣 Клипса: ${clips}`);
-    if (depth)       details.push(`🎣 Глубина: ${depth}`);
-    if (speed)       details.push(`⋙ Скорость: ${speed}`);
-    if (square)      details.push(`🗺 Квадрат: ${square}`);
-    if (comment)     details.push(`💬 Комментарий: ${comment}`);
-
-    const parts=[...head];
-    if (fishLine) parts.push(fishLine);
-    if (details.length) parts.push(...details);
-
-    let text = parts.join('\n').replace(/\n{3,}/g,'\n\n').trim();
-
+    if(coordinates) details.push(`📍 Координаты: ${coordinates}`);
+    if(clips) details.push(`🎣 Клипса: ${clips}`);
+    if(depth) details.push(`🎣 Глубина: ${depth}`);
+    if(speed) details.push(`⋙ Скорость: ${speed}`);
+    if(square) details.push(`🗺 Квадрат: ${square}`);
+    if(comment) details.push(`💬 Комментарий: ${comment}`);
+    const parts=[...head]; if(fishLine) parts.push(fishLine); if(details.length) parts.push(...details);
+    let text=parts.join('\n').trim();
     const entities=[];
-    if (customId){
-      const idx = text.lastIndexOf(emojiChar);
-      if (idx >= 0){
-        entities.push({ type:'custom_emoji', offset: idx, length: emojiChar.length, custom_emoji_id: customId });
-      }
-    }
-    return { text, entities: entities.length ? entities : undefined };
+    if(customId){ const idx=text.lastIndexOf(emojiChar); if(idx>=0){ entities.push({type:'custom_emoji',offset:idx,length:emojiChar.length,custom_emoji_id:customId}); } }
+    return { text, entities: entities.length?entities:undefined };
   }
 
-  // ===== ОТПРАВКА =====
   async function sendData(){
-    if (selectedPhotos.length < 3){ alert("Необходимо выбрать минимум 3 фото."); return; }
-
-    const { text, entities } = buildTextAndEntities();
-    const lake = document.getElementById('lake').value;
-    const message_thread_id = THREAD_BY_LAKE[lake] ?? null;
-
-    const payload = {
-      chat_id: CHAT_ID,
-      text,
-      media: selectedPhotos.map(p=>p.imageUrl),
-      entities,
-      message_thread_id
-    };
-
+    if(selectedPhotos.length<3){ alert("Необходимо минимум 3 фото"); return; }
+    const {text,entities}=buildTextAndEntities();
+    const lake=document.getElementById('lake').value;
+    const message_thread_id=THREAD_BY_LAKE[lake]??null;
+    const payload={ chat_id:CHAT_ID, text, media:selectedPhotos.map(p=>p.imageUrl), entities, message_thread_id };
     try{
-      const r=await fetch(`${WORKER_BASE}/send`,{
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body:JSON.stringify(payload)
-      });
+      const r=await fetch(`${WORKER_BASE}/send`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const j=await r.json();
-      if(!j?.ok){ console.log('Ошибка публикации:', j); alert("Ошибка публикации"); return; }
-      alert("Опубликовано!");
-      document.querySelectorAll('input').forEach(el=>el.value="");
+      if(!j?.ok){ alert("Ошибка публикации"); return; }
+      alert("Опубликовано!"); document.querySelectorAll('input').forEach(el=>el.value="");
       selectedPhotos=[]; updatePhotoCount();
-    }catch(e){ console.error(e); alert("Сеть недоступна или ошибка сервера"); }
+    }catch(e){ alert("Ошибка сети/сервера"); }
+  }
+
+  // ===== кнопка для Telegram Desktop =====
+  if(/TelegramDesktop/i.test(navigator.userAgent)){
+    document.getElementById('openBrowserBtn').style.display='block';
+    document.getElementById('openBrowserBtn').addEventListener('click',()=>{
+      if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink){
+        Telegram.WebApp.openLink(window.location.href);
+      }else{
+        window.open(window.location.href,"_blank");
+      }
+    });
   }
 </script>
 </body>
