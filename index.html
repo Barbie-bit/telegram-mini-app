@@ -82,13 +82,13 @@
     "Тунгуска":18,"Яма":19,"Норвежское море":20
   };
 
-  // кастом-эмодзи (сработают когда добавишь набор для чата)
+  // кастом-эмодзи из твоего набора
   const CUSTOM_EMOJI_IDS = {
     TROPHY: "5341269699227321203",
     UNIQUE: "5341321204475133248",
   };
 
-  // ===== рыбы по водоёмам (полный список) =====
+  // ===== рыбы по водоёмам =====
   const fishByWater = {
     "Лосиное":["Вармоус","Горбыль речной","Доросома северная","Краппи белый","Краппи чёрный","Лаврак полосатый","Лаврак полосатый гибрид","Окунь белый","Окунь большеротый","Окунь малоротый","Окунь павлиний","Окунь пятнистый","Панцирник пятнистый","Солнечник красноухий","Солнечник синежаберный","Сомик канальный","Сомик оливковый","Судак светлопёрый","Щука панцирная"],
     "Комариное":["Вьюн","Голавль","Густера","Ёрш","Карась золотой","Карась серебряный","Карп зеркальный","Карп Кои Мидори-гои","Карп чешуйчатый","Лещ","Линь","Линь золотистый","Лягушка","Окунь","Плотва обыкновенная","Ротан","Сом","Уклейка","Щука обыкновенная","Язь"],
@@ -128,122 +128,57 @@
   function updatePhotoCount(){ document.getElementById('photoCountInfo').textContent = `Выбрано ${selectedPhotos.length} фото. Минимум 3, максимум 10.`; }
   updatePhotoCount();
 
-  // ---- утилиты (НОВОЕ: перекодирование, abortable fetch) ----
   async function blobToBase64(blob){
-    const buf=await blob.arrayBuffer();
-    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const buf = await blob.arrayBuffer();
+    let binary = "";
+    const bytes = new Uint8Array(buf);
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
   }
 
-  // Перекод в JPEG до 1600px — помогает против «тяжёлых» изображений и нестандартных форматов
-  <script>
-  // --- УЖАТИЕ В JPEG ---
-  async function reencodeToJpeg(file, maxSide=1200, quality=0.8){
-    return new Promise((resolve, reject)=>{
-      const fr = new FileReader();
-      fr.onerror = ()=> reject(new Error('Не удалось прочитать файл'));
-      fr.onload = ()=>{
-        const img = new Image();
-        img.onerror = ()=> reject(new Error('Этот формат изображения не поддерживается'));
-        img.onload = ()=>{
-          let {width, height} = img;
-          const scale = Math.min(1, maxSide / Math.max(width, height));
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-          const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob)=>{
-            if (!blob) return reject(new Error('Не удалось перекодировать изображение'));
-            resolve(blob);
-          }, 'image/jpeg', quality);
-        };
-        img.src = fr.result;
-      };
-      fr.readAsDataURL(file);
-    });
-  }
-
-  function abortableFetch(resource, options={}, timeoutMs=60000){
-    const controller = new AbortController();
-    const id = setTimeout(()=>controller.abort(), timeoutMs);
-    return fetch(resource, {
-      ...options,
-      signal: controller.signal,
-      // чуть более «нейтральные» параметры для некоторых сетей/браузеров на ПК
-      referrerPolicy: 'no-referrer',
-      credentials: 'omit',
-      cache: 'no-store',
-      mode: 'cors'
-    }).finally(()=>clearTimeout(id));
-  }
-
-  async function blobToBase64(blob){
-    const buf=await blob.arrayBuffer();
-    return btoa(String.fromCharCode(...new Uint8Array(buf)));
-  }
-
-  // --- ЗАГРУЗКА: СНАЧАЛА MULTIPART, затем JSON/base64 ---
+  // ВСЕГДА JSON/base64 (multipart отключён специально для стабильности на ПК)
   async function uploadToImgbbViaWorker(fileBlob, name){
-    const safeName = (name||'photo');
+    const b64 = await blobToBase64(fileBlob);
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), 30000); // 30s таймаут
 
-    // 1) multipart (стабильнее на ПК)
     try{
-      const form = new FormData();
-      form.set('file', fileBlob, `${safeName}.jpg`);
-      form.set('name', safeName);
-      const r = await abortableFetch(`${WORKER_BASE}/upload`, { method:'POST', body:form }, 60000);
-      const txt = await r.text();
-      let j; try{ j = JSON.parse(txt); }catch{}
-      if (r.ok && j?.ok && j.url) return j.url;
-      throw new Error(`multipart: http ${r.status}${j?.error?` — ${j.error}`:''}${!j?` — ${txt}`:''}`);
-    }catch(e1){
-      // 2) json/base64 как запасной вариант
-      try{
-        const b64 = await blobToBase64(fileBlob);
-        const r2 = await abortableFetch(`${WORKER_BASE}/upload`, {
-          method:'POST',
-          headers:{'content-type':'application/json'},
-          body:JSON.stringify({ imageBase64:b64, name:safeName })
-        }, 60000);
-        const txt2 = await r2.text();
-        let j2; try{ j2 = JSON.parse(txt2); }catch{}
-        if (r2.ok && j2?.ok && j2.url) return j2.url;
-        throw new Error(`base64: http ${r2.status}${j2?.error?` — ${j2.error}`:''}${!j2?` — ${txt2}`:''}`);
-      }catch(e2){
-        throw e2.name === 'AbortError' ? new Error('Превышен таймаут загрузки (60 сек)') : e2;
-      }
+      const r = await fetch(`${WORKER_BASE}/upload`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ imageBase64: b64, name: (name || 'photo') }),
+        signal: controller.signal,
+        mode: 'cors',
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      const j = await r.json();
+      if (j?.ok && j.url) return j.url;
+      throw new Error(j?.error || 'upload failed');
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  // --- обработчик выбора файлов (оставляем всё как было, но используем новые функции) ---
   document.getElementById('hiddenFileInput').addEventListener('change', async (e)=>{
     const files=[...e.target.files||[]]; if(!files.length) return;
     const slice=files.slice(0, Math.min(MAX_PHOTOS-selectedPhotos.length, files.length));
-
     for(const file of slice){
       try{
-        if (!file.type.startsWith('image/')) {
-          throw new Error('Файл не является изображением');
-        }
-        // всегда перекодируем в легкий JPEG
-        const jpegBlob = await reencodeToJpeg(file);
-        const baseName = (file.name||'photo').replace(/\.[^.]+$/,'');
-        const url = await uploadToImgbbViaWorker(jpegBlob, baseName);
+        const url=await uploadToImgbbViaWorker(file, file.name.replace(/\.[^.]+$/,''));
         selectedPhotos.push({imageUrl:url});
       }catch(err){
-        const reason = (err && (err.message||String(err))) || 'Неизвестная ошибка';
-        alert(`Не удалось загрузить файл: ${file.name}\nПричина: ${reason}`);
-        console.error('upload error:', err);
+        console.error(err);
+        alert(`Не удалось загрузить файл: ${file.name}`);
       }
     }
-    updatePhotoCount();
-    e.target.value="";
+    updatePhotoCount(); e.target.value="";
   });
-</script>
 
-
-  // ===== текст + кастом-эмодзи (оформление оставлено как есть) =====
+  // ===== текст + кастом-эмодзи (формат поста оставлен как на скрине) =====
   function buildTextAndEntities(){
     const category=document.getElementById('category').value;
     const lake=document.getElementById('lake').value;
@@ -256,15 +191,17 @@
     const square=document.getElementById('square').value.trim();
     const comment=document.getElementById('comment').value.trim();
 
+    // две строки-хэштегов + пустая строка
     const head=[`# ${category.toLowerCase()}_PP4Farm`, `# ${lake}_PP4Farm`, ''];
 
+    // строка с рыбой + кастом-эмодзи ИМЕННО после рыбы
     let fishLine = "";
-    let emojiChar = "";
+    let emojiChar = "";           // базовый символ-замена
     let customId  = null;
 
     if (fish){
-      if (category === 'Трофей') { emojiChar = '💥'; customId = CUSTOM_EMOJI_IDS.TROPHY; }
-      if (category === 'Уникальное') { emojiChar = '🌸'; customId = CUSTOM_EMOJI_IDS.UNIQUE; }
+      if (category === 'Трофей') { emojiChar = '💥'; customId = "5341269699227321203"; }
+      if (category === 'Уникальное') { emojiChar = '🌸'; customId = "5341321204475133248"; }
       fishLine = `🐟 ${fish}${customId ? ' ' + emojiChar : ''}`;
     }
 
@@ -282,6 +219,7 @@
 
     let text = parts.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 
+    // помечаем emojiChar как custom_emoji
     const entities=[];
     if (customId){
       const idx = text.lastIndexOf(emojiChar);
@@ -317,6 +255,7 @@
       const j=await r.json();
       if(!j?.ok){ console.log('Ошибка публикации:', j); alert("Ошибка публикации"); return; }
       alert("Опубликовано!");
+      // сброс формы
       document.querySelectorAll('input').forEach(el=>el.value="");
       selectedPhotos=[]; updatePhotoCount();
     }catch(e){ console.error(e); alert("Сеть недоступна или ошибка сервера"); }
